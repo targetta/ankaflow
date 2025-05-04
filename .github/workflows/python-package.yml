@@ -1,0 +1,41 @@
+name: Python package
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv and dev dependencies
+      run: |
+        pip install uv
+        uv pip install --system -e .[dev,server]
+
+    - name: Lint with ruff
+      run: |
+        ruff check .
+
+    # - name: Check formatting with black
+    #   run: |
+    #     black --exclude '/(\.direnv|\.eggs|\.git|\.ruff_cache|\.venv|\.vscode|__pypackages__|_build|build|dist|venv|tmp|tests)/' --preview --safe --check .
+
+    - name: Run unittests
+      run: |
+        python -m unittest discover -p "test_*.py"

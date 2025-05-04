@@ -1,0 +1,92 @@
+site_name: AnkaFlow Documentation  # Name of your project or documentation site
+site_url: https://example.com/docs  # URL where the documentation will be hosted
+theme:
+  name: material  # Choose a theme for the documentation; 'material' is popular and provides a modern look
+
+# Markdown file generation
+markdown_extensions:
+  - toc:  # Enables a Table of Contents (TOC) for each page
+      permalink: true  # Adds a permalink to each header for easy linking
+  - tables  # Enables rendering of tables in Markdown
+
+# Directory where Markdown files are located (default is 'docs')
+docs_dir: docs  # Directory containing your Markdown files, adjust if your docs are elsewhere
+site_dir: site
+
+# Navigation for the documentation site
+# Defines the structure of the sidebar
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Getting started: getting-started.md
+  - Guides:
+      - Browser setup: README-browser.md
+      - Custom connection: custom-connection.md
+      - Using with Motherduck: motherduck.md
+  - API:
+      - Pipeline API: api/ducts.models.md
+      - Duct API: api/ducts.md
+
+# Handle import errors and log them
+# The 'mkdocs_import_export' plugin helps manage importing custom modules or submodules within the documentation
+plugins:
+  - search  # Enables the search functionality within the documentation
+  # - mkdocs_import_export:  # Plugin for managing imports and errors when trying to import packages/modules
+  #     error_handling: true  # Enable error handling, will capture import errors and prevent the build from failing
+  #     log_import_errors: true  # Logs any import errors for easier debugging
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_submodules: true
+            signature_crossrefs: true
+            unwrap_annotated: true
+            separate_signature: true
+            docstring_style: google
+            show_signature_annotations: true
+            merge_init_into_class: true
+            members_order: alphabetical
+            scoped_crossrefs: true
+            signature_crossrefs: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_if_no_docstring: false
+            show_bases: true
+            show_labels: false
+            members: true
+            show_source: false
+            docstring_section_style: table
+            modernize_annotations: true
+            filters:
+              - "!^_"
+              - "!^__"
+              - "!model_config"
+              - "!^test"
+              - "!^tmp"
+              - "!^itest"
+              - "!^[Tt]est"
+  - autorefs:
+      resolve_closest: true
+  - exclude:
+      glob:
+        - tmp/*
+        - tmp_*.py
+        - test_*.py
+        - itest_*.py
+        - "*.tmp"
+        - "*.pdf"
+        - "*.gz"
+      regex:
+        - '.*\.(tmp|bin|tar)$'
+# Example of how to include custom styles (CSS) for the documentation site
+extra_css:
+  - 'css/custom.css'  # Custom CSS file for styling your documentation; can include logos, colors, etc.
+
+# Extra settings to handle imports within your docs
+# extra:
+#   imports:
+    # - module1  # Example of a module to include in your documentation
+    # - module2  # Another module to include
+    # - buimatic.ducts  # A submodule from a subpackage
+
+# The 'extra' field is often used for custom configurations, such as configuring imports, integrations, or additional metadata

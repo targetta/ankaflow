@@ -1,0 +1,69 @@
+[project]
+name = "ankaflow"
+version = "0.1.0"
+description = "AnkaFlow pipeline runner for server and browser"
+authors = [{ name = "Madis Udam" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb==1.1.1",
+    "pandas==2.2.3",
+    "pyarrow==17.0.0",
+    "pyyaml==6.0.2",
+    "typing-extensions==4.13.0",
+    "arrow==1.2.1",
+    "sqlglot==25.24.4",
+    "pydantic==2.10.6",
+    "jinja2==3.1.2",
+    "pypika-fork==0.49.0",
+    "shortuuid==1.0.13",
+    "fsspec==2025.3.2",
+    "jmespath==1.0.1",
+    "psutil==7.0.0",
+]
+
+[project.optional-dependencies]
+# Extra packages used in server-side environments
+server = [
+    "boto3==1.36.4",
+    "clickhouse-driver==0.2.9",
+    "google-cloud-storage==2.11.0",
+    "httpx==0.21.1",
+    "deltalake==0.25.4",
+    "google-cloud-bigquery==3.26.0",
+    "google-cloud-bigquery-storage==2.13.1"
+]
+
+# Optional list used only in browser/Pyodide
+browser = []
+
+# Development tools (black, ruff, etc.)
+dev = [
+    "black>=25.1.0",
+    "ruff>=0.9.4",
+    "build",
+    "mkdocs>=1.6.1",
+    "mkdocs-exclude>=1.0.2",
+    "mkdocs-material>=9.6.12",
+    "mkdocstrings>=0.29.1",
+    "mkdocstrings-python>=1.16.10",
+    "pyodide-py>=0.27.4"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ankaflow*"]
+exclude = ["ankaflow.tests*", "ankaflow.tmp*", "local*"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B", "Q", "E5"]
+ignore = ["B904"]
+
+
+[project.scripts]
+ankaflow = "ankaflow.cli:main"

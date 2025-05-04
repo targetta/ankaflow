@@ -1,0 +1,225 @@
+- name: TestHTTPRead429
+  log_level: DEBUG
+  kind: source
+  connection:
+    kind: Rest
+    client:
+      base_url: <<API.look('base_url', variables)>>
+    request:
+      endpoint: /json
+      content_type: application/json
+      method: get
+      query:
+        page_no: 0
+        page_size: 2
+        simulate429: 2  # Simulate rate limiting to test wait/retry logic
+      response:
+        locator: ''
+        content_type: application/json
+  show: 5
+- name: TestHTTPRead
+  kind: source
+  connection:
+    kind: Rest
+    client:
+      base_url: <<API.look('base_url', variables)>>
+    request:
+      endpoint: /json
+      content_type: application/json
+      method: get
+      response:
+        locator: ''
+        content_type: application/json
+  show: 5
+- name: TestHTTPPaging
+  kind: source
+  connection:
+    kind: Rest
+    client:
+      base_url: <<API.look('base_url', variables)>>
+    request:
+      endpoint: /json
+      content_type: application/json
+      method: get
+      query:
+        page_no: 0
+        page_size: 2
+      response:
+        locator: ''
+        content_type: application/json
+        handler:
+          kind: Pagination
+          page_param: page_no
+          page_size: 2
+          param_locator: query
+          total_records: ''
+          increment: 1
+  show: 5
+
+- name: TestParquetRead
+  kind: source
+  connection:
+    kind: Parquet
+    locator: <<API.look('test_parquet_read', variables)>>
+  show: 5
+
+- name: TestJSONRead
+  kind: source
+  connection:
+    kind: JSON
+    locator: <<API.look('test_json_read', variables)>>
+  show: 5
+  show_schema: true
+
+- name: TestJSONLRead
+  kind: source
+  connection:
+    kind: JSON
+    locator: <<API.look('test_jsonl_read', variables)>>
+    format: lines
+  show: 5
+
+- name: TestCSVRead
+  kind: source
+  connection:
+    kind: CSV
+    locator: <<API.look('test_csv_read', variables)>>
+  show: 5
+
+- name: TestParquetTranform
+  kind: transform
+  query: select count(*) as totals from TestParquetRead
+  show: 5
+
+- name: UnionAllSources
+  kind: transform
+  query: >
+    select * from TestParquetRead
+    union all
+    select * from TestJSONRead
+    union all
+    select * from TestJSONLRead
+    union all
+    select * from TestCSVRead
+  show: -1
+  show_schema: true
+
+- name: WriteDelta
+  kind: sink
+  connection:
+    kind: Deltatable
+    locator: <<API.look('test_delta', variables)>>
+    data_mode: append
+
+- name: Read Delta
+  kind: source
+  connection:
+    kind: Deltatable
+    locator: <<API.look('test_delta', variables)>>
+  show: -1
+  query: select * from Deltatable
+
+- name: Truncate Delta
+  kind: sql
+  connection:
+    kind: Deltatable
+    locator: <<API.look('test_delta', variables)>>
+  query: truncate Deltatable
+
+- name: Read Empty Delta
+  kind: source
+  connection:
+    kind: Deltatable
+    locator: <<API.look('test_delta', variables)>>
+  show: -1
+  query: select * from Deltatable
+
+- name: RemoteTests
+  kind: pipeline
+  # Below remote handling - only execute in context
+  skip_if: <<not (context.dataset or context.ch_database)>>
+  stages:
+    - name: TestCSVReadForBigQuery
+      kind: source
+      connection:
+        kind: CSV
+        locator: <<API.look('test_csv_read', variables)>>
+      show: 5
+
+    - name: SinkBigquery
+      kind: sink
+      connection:
+        kind: BigQuery
+        locator: test_table
+        data_mode: append
+        config:
+          dataset: <<context.dataset>>
+          project: <<context.project>>
+          region: <<context.region>>
+          credential_file: <<context.credential_file>>
+
+    - name: ReadBigQuery
+      kind: source
+      log_level: DEBUG
+      connection:
+        kind: BigQuery
+        locator: test_table
+        config:
+          dataset: <<context.dataset>>
+          project: <<context.project>>
+          region: <<context.region>>
+          credential_file: <<context.credential_file>>
+      show: -1
+      query: select * from Bigquery
+
+    - name: ReadClickhouse
+      kind: source
+      connection:
+        kind: Clickhouse
+        locator: wbu_saleshistory
+        config: &CHConfig
+          host: <<context.ch_host>>
+          port: <<context.ch_port>>
+          database: <<context.ch_database>>
+          username: <<context.ch_user>>
+          password: <<context.ch_password>>
+          blocksize: 10000
+      query: select * from Clickhouse 
+      show: 0
+    - name: CreateClickhouse
+      kind: sql
+      connection:
+        kind: Clickhouse
+        locator: clickhouse
+        config: *CHConfig
+      query: create table if not exists test_data_target as test_data
+    - name: ExtractRead
+      kind: transform
+      query: select * from ReadClickhouse
+    - name: SinkClick
+      kind: sink
+      connection:
+        kind: Clickhouse
+        locator: test_data_b
+        config: *CHConfig
+
+    - name: SeeClickhouse
+      kind: sql
+      connection:
+        kind: Clickhouse
+        locator: clickhouse
+        config:
+          host: <<context.ch_host>>
+          port: <<context.ch_port>>
+          database: <<context.ch_database>>
+          username: <<context.ch_user>>
+          password: <<context.ch_password>>
+      query: >
+        select count() from test_data;
+
+- name: TestS3Read
+  kind: source
+  skip_if: <<not context.s3_bucket>>
+  connection:
+    kind: Parquet
+    locator: s3://tar-demo-public/titanic.parquet

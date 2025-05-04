@@ -1,0 +1,17 @@
+- name: TitanicHTTP
+  kind: source
+  attribution: Downloaded from https://www.tablab.app/parquet/sample
+  connection:
+    kind: Parquet
+    locator: https://tar-demo-public.s3.eu-west-1.amazonaws.com/titanic.parquet
+  show: 5
+- name: SortAsc
+  kind: transform
+  query: SELECT * FROM TitanicHTTP ORDER BY PassengerId ASC
+- name: SortDesc
+  kind: transform
+  query: SELECT * FROM TitanicHTTP ORDER BY PassengerId DESC
+- name: UnionSorted
+  kind: transform
+  query: SELECT * FROM SortAsc UNION ALL SELECT * FROM SortDesc
+  show: -1 
