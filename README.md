@@ -64,3 +64,11 @@ Each stage is one of: `tap`, `transform`, or `sink`.
     kind: Parquet
     locator: output.parquet
 ```
+
+## 📖 Documentation
+
+- [All docs](https://mudam.github.io/ankaflow/)
+- [Pipeline specification](https://mudam.github.io/ankaflow/api/ankaflow.models/)
+- [Live demo](https://mudam.github.io/ankaflow/demo/)
+
+---

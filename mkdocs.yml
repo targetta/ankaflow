@@ -15,7 +15,9 @@ site_dir: site
 extra:
   static_dir:
     - demo
-
+  analytics:
+    provider: google
+    property: G-KTHG2QG391
 nav:
   - Home: index.md
   - Overview: overview.md
