@@ -1,12 +1,12 @@
 # Motherduck Integration Guide
 
-This guide explains how to integrate and manipulate Motherduck data in your Duckflow pipelines. Since Motherduck requires native network access, all pipeline runs using Motherduck must execute on a server or environment with internet connectivity.
+This guide explains how to integrate and manipulate Motherduck data in your AnkaFlow pipelines. Since Motherduck requires native network access, all pipeline runs using Motherduck must execute on a server or environment with internet connectivity.
 
 ---
 
 ## 1. Prerequisites
 
-- **Duckflow** installed and configured.
+- **AnkaFlow** installed and configured.
 - Access to a Motherduck account and dataset.
 - Valid **Motherduck API token** set as an environment variable.
 
@@ -44,7 +44,7 @@ Below is a minimal pipeline demonstrating how to attach a Motherduck endpoint, q
 
 ### Explanation
 
-1. **API Token:** Duckflow reads `motherduck_token` from the environment.  
+1. **API Token:** AnkaFlow reads `motherduck_token` from the environment.  
 2. **`attach 'md:'`:** Establishes the connection to Motherduck using the DSN prefix `md:`.  
 3. **System Catalog Query:** Lists available tables in `INFORMATION_SCHEMA.tables`.  
 4. **Data Query:** Pulls the first 10 rows from `sample_data.nyc.taxi`.
@@ -56,7 +56,7 @@ Below is a minimal pipeline demonstrating how to attach a Motherduck endpoint, q
 Execute your pipeline on a server with network access:
 
 ```bash
-duct run pipeline.yaml
+ankaflow pipeline.yaml
 ```
 
 You should see output sections like:
@@ -147,4 +147,4 @@ To create or overwrite tables in Motherduck, use SQL DDL statements:
 
 ---
 
-Happy querying with Motherduck in Duckflow!
+Happy querying with Motherduck in AnkaFlow!

@@ -1,4 +1,4 @@
-# DuctFlow
+# AnkaFlow
 
 **Write Once, Run Anywhere** — SQL-powered, YAML-defined data pipelines that work in **Python or the Browser**.
 
@@ -19,7 +19,7 @@ Run data workflows that combine Parquet, REST APIs, and SQL transforms with no i
 
 ```bash
 uv pip install -e .[server]
-python -m ductflow run pipeline.yaml
+ankaflow pipeline.yaml
 ```
 
 ### 🌐 Browser (Pyodide)
@@ -32,21 +32,20 @@ python -m ductflow run pipeline.yaml
 
 ```bash
 uv pip install -e .[dev,server]
-pytest
 ```
 
 ## 📦 Installation
 
-Install only the core (for Pyodide or remote embedding):
+Install only the core (minimal setup with Parquet, JSON S3 support for Pyodide or remote embedding; does not include databases):
 
 ```bash
-uv pip install ductflow
+uv pip install ankaflow
 ```
 
-Install with full server capabilities (DuckDB, boto3, ClickHouse):
+Install with full server capabilities (BigQuery, ClickHouse, Delta write):
 
 ```bash
-uv pip install ductflow[server]
+uv pip install ankaflow[server]
 ```
 
 Install for development:
@@ -57,23 +56,9 @@ uv pip install -e .[dev,server]
 
 ## 📂 Project Layout
 
-- `ductflow/` – Python engine and core logic
+- `ankaflow/` – Python engine and core logic
 - `docs/` – Markdown and API docs (generated via pdoc)
-- `spa/` – Angular demo (compiled to single-page Pyodide app)
-- `tests/` – Unit tests for SQL interceptors, paths, and pipeline runners
 
-## 📖 Documentation
-
-- [Technical Summary](docs/DUCT%20Technical_Summary.md)
-- [Pipeline Specification](docs/DUCT%20GPT%20Pipeline_Specification.md)
-- [Object Downloader](docs/downloader_localfs_documentation.md)
-- [API Docs (pdoc)](https://yourdomain.github.io/DuctFlow/)
-
-## 🌍 Live Demo
-
-Try DuctFlow fully in-browser:
-
-👉 [Launch browser demo](https://yourdomain.github.io/DuctFlow/demo.html)
 
 Upload a `pipeline.yaml` like:
 

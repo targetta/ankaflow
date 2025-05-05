@@ -1,7 +1,7 @@
 
-# Getting Started with Duckflow
+# Getting Started with AnkaFlow
 
-Duckflow is a powerful data pipeline framework that allows you to define, manage, and execute complex workflows involving data sourcing, transformation, and storage. This guide walks you through the basic steps to get started with Duckflow, including setting up the pipeline, installing dependencies, and running your first pipeline.
+AnkaFlow is a powerful data pipeline framework that allows you to define, manage, and execute complex workflows involving data sourcing, transformation, and storage. This guide walks you through the basic steps to get started with AnkaFlow, including setting up the pipeline, installing dependencies, and running your first pipeline.
 
 ### Prerequisites
 
@@ -10,26 +10,26 @@ Before you get started, make sure you have the following installed on your machi
 1. Python 3.12 or later
 2. `pip` (Python's package installer)
 
-### A. Install Duckflow
+### A. Install AnkaFlow
 
-To begin using Duckflow, install the required packages by running:
+To begin using AnkaFlow, install the required packages by running:
 
 ```bash
-pip install duckflow
+pip install AnkaFlow
 ```
 
 In server environment you may want to include additional connectors
 
 ```bash
-pip install duckflow[server]
+pip install AnkaFlow[server]
 ```
 
-This will install Duckflow and its necessary dependencies, including `duckdb`, `yaml`, and `pandas`.
+This will install AnkaFlow and its necessary dependencies, including `duckdb`, `yaml`, and `pandas`.
 
 
 ### B. Environment variables
 
-There are few environment variables that can be used to confgure Duckflow behaviour (usage is optional):
+There are few environment variables that can be used to confgure AnkaFlow behaviour (usage is optional):
 
 - Load extensions from local disk (disable network load)
 ```bash
@@ -51,13 +51,10 @@ In Pyodide environment these settings are not available.
 
 ### 1. Imports
 
-To begin using Duckflow, you'll first need to import the necessary libraries:
+To begin using AnkaFlow, you'll first need to import the necessary libraries:
 
 ```python
-import duckdb
-import yaml
-import pandas as pd
-from duckflow import Duct, DuctContext, ConnectionConfiguration
+from ankaflow import Flow, FlowContext, ConnectionConfiguration
 import logging
 ```
 
@@ -79,12 +76,7 @@ my_logger.addHandler(console_handler)
 The configuration for your pipeline is often defined in a YAML file. This file will contain the stages of the pipeline, their configurations, and other necessary details.
 
 ```python
-# Load pipeline configuration from YAML file
-with open('pipeline_config.yaml', 'r') as file:
-    pipeline_config = yaml.safe_load(file)
-
-# Or via utility
-from duckflow import Stages
+from ankaflow import Stages
 
 pipeline_config = Stages.load('pipeline_config.yaml')
 ```
@@ -109,9 +101,9 @@ stages:
       file_path: "output/data.csv"
 ```
 
-### 4. Create `ConnectionConfiguration` and `DuctContext`
+### 4. Create `ConnectionConfiguration` and `FlowContext`
 
-The `ConnectionConfiguration` and `DuctContext` are essential for configuring the pipeline and providing context for variables and connections.
+The `ConnectionConfiguration` and `FlowContext` are essential for configuring the pipeline and providing context for variables and connections.
 
 ```python
 # Create a ConnectionConfiguration with necessary details
@@ -121,50 +113,33 @@ conn_config = ConnectionConfiguration(
     dataset='my_dataset'
 )
 
-# Create a DuctContext, passing any relevant configuration parameters
-duct_context = DuctContext(
+# Create a FlowContext, passing any relevant configuration parameters
+flow_context = FlowContext(
     context_variable='some_value',  # Example variable
     connection=conn_config
 )
 ```
 
-### 5. Parse Loaded YAML to Stages
+### 6. Create the Pipeline (`Flow`)
 
-After loading the YAML file, you'll need to parse it into `Stage` objects that define each step of your pipeline. This includes connecting to data sources, transforming data, and writing the output to a target system.
-
-```python
-# Parse the loaded YAML configuration into stages
-stages = []
-for stage_config in pipeline_config['stages']:
-    stage = {
-        'kind': stage_config['kind'],
-        'name': stage_config['name'],
-        'connection': stage_config.get('connection', {}),
-        'query': stage_config.get('query', '')
-    }
-    stages.append(stage)
-```
-
-### 6. Create the Pipeline (`Duct`)
-
-Now that you have everything set up (logger, configuration, stages), you can create the `Duct` object and start running your pipeline.
+Now that you have everything set up (logger, configuration, stages), you can create the `Flow` object and start running your pipeline.
 
 ```python
-# Create the Duct instance with the pipeline stages, context, and configuration
-duct = Duct(
+# Create the Flow instance with the pipeline stages, context, and configuration
+flow = Flow(
     defs=stages, 
-    context=duct_context, 
+    context=flow_context, 
     default_connection=conn_config, 
     logger=my_logger
 )
 
 # Run the pipeline
-duct.run()
+flow.run()
 ```
 
 ### Wrapping Up
 
-- **Duckflow** allows you to create flexible and modular data pipelines by defining stages for sourcing, transforming, and storing data.
+- **AnkaFlow** allows you to create flexible and modular data pipelines by defining stages for sourcing, transforming, and storing data.
 - You can manage your pipeline configuration using YAML files and easily set up connections to different data sources (BigQuery, databases, files).
 - The logger provides essential insight into your pipeline’s execution, helping you debug and track issues.
   
@@ -174,5 +149,5 @@ Now that you've set up your first pipeline, you can customize it further by addi
 
 ### Additional Resources
 
-- **Duckflow Documentation**: For more advanced usage and API references, check out the Duckflow documentation.
-- **Community Support**: If you encounter any issues, join the Duckflow community for support and troubleshooting.
+- **AnkaFlow Documentation**: For more advanced usage and API references, check out the AnkaFlow documentation.
+- **Community Support**: If you encounter any issues, join the AnkaFlow community for support and troubleshooting.

@@ -1,6 +1,6 @@
-# 🧪 DuctFlow in the Browser (Pyodide)
+# 🧪 AnkaFlow in the Browser (Pyodide)
 
-This guide shows how to run **DuctFlow pipelines fully in-browser**, using Pyodide (Python in WebAssembly).  
+This guide shows how to run **AnkaFlow pipelines fully in-browser**, using Pyodide (Python in WebAssembly).  
 No server, no install — pipelines run client-side using the same YAML-based definitions.
 
 ---
@@ -9,15 +9,15 @@ No server, no install — pipelines run client-side using the same YAML-based de
 
 | Method                  | Link                                              |
 |-------------------------|---------------------------------------------------|
-| 🧪 JupyterLite Notebook | [Launch Demo Notebook](https://jupyter.org/try-jupyter/notebooks/index.html?path=Ducktflow.ipynb) |
-| 🌐 HTML SPA Demo        | [Try YAML Upload Demo](https://yourdomain.github.io/DuctFlow/demo.html) |
+| 🧪 JupyterLite Notebook | [Launch Demo Notebook](#) |
+| 🌐 HTML SPA Demo        | [Try YAML Upload Demo](#) |
 
 ---
 
 ## 📦 How It Works
 
-- DuctFlow is compatible with Pyodide (via `micropip`)
-- Remote files (e.g., S3, GCS) are fetched using `pyodide.http.pyfetch`
+- AnkaFlow is compatible with Pyodide (via `micropip`)
+- Remote files (e.g., S3, GCS) are fetched using `pyodide.http.pyfetch` or custom implementation (e.g. `axios`)
 - The SQL engine is DuckDB (running in WASM)
 - Everything is local to your browser
 
@@ -27,9 +27,9 @@ No server, no install — pipelines run client-side using the same YAML-based de
 
 ```python
 import micropip
-await micropip.install("duckflow")
+await micropip.install("ankaflow")
 
-from duckflow import Duct
+from ankaflow import Flow
 yaml = '''
 - name: Load
   kind: source
@@ -42,7 +42,7 @@ yaml = '''
   query: select * from Load
 '''
 
-Duct().run(yaml)
+Flow().run(yaml)
 ```
 
 ---
@@ -57,7 +57,7 @@ Duct().run(yaml)
 
 ## 🛠 For Developers
 
-If you're embedding DuctFlow in a browser app:
+If you're embedding AnkaFlow in a browser app:
 
 1. Load Pyodide:
 ```html
@@ -70,9 +70,9 @@ const pyodide = await loadPyodide();
 await pyodide.loadPackage(["micropip"]);
 await pyodide.runPythonAsync(`
     import micropip
-    await micropip.install("duckflow")
-    from duckflow import Duct
-    Duct().run(...)
+    await micropip.install("ankaflow")
+    from ankaflow import Flow
+    Flow().run(...)
 `);
 ```
 

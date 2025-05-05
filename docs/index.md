@@ -1,13 +1,13 @@
 
-# Duckflow - Run Data Pipelines Anywhere
+# AnkaFlow - Run Data Pipelines Anywhere
 
 **From REST APIs to SQL, from Local Python to Browser Execution**
 
 ---
 
-## What is Duckflow?
+## What is AnkaFlow?
 
-Duckflow is a YAML-driven, SQL-powered data pipeline framework designed for both local Python and in-browser (Pyodide) execution. It enables seamless extraction, transformation, and joining of data across REST APIs, cloud storage, and databases, all without writing custom Python code.
+AnkaFlow is a YAML-driven, SQL-powered data pipeline framework designed for both local Python and in-browser (Pyodide) execution. It enables seamless extraction, transformation, and joining of data across REST APIs, cloud storage, and databases, all without writing custom Python code.
 
 **Write your pipeline once, run it anywhere.**
 
@@ -37,16 +37,21 @@ Duckflow is a YAML-driven, SQL-powered data pipeline framework designed for both
 
 ---
 
-## Why Choose Duckflow?
+## Why Choose AnkaFlow?
 
-| Feature                          | Duckflow | Airflow | dbt | Dagster | Prefect |
-|----------------------------------|---------|--------|-----|--------|--------|
-| In-Browser Execution (Pyodide)   | ✅ Yes  | ❌     | ❌  | ❌     | ❌     |
-| Dynamic Templating               | ✅ Yes  | 🔶     | 🔶  | 🔶     | 🔶     |
-| REST + SQL Join                  | ✅ Native | 🔶   | ❌  | 🔶     | 🔶     |
-| Python Transform                 | ✅ Yes  | 🔶     | ❌  | ✅     | ✅     |
-| BigQuery / Delta / S3 / MSSQL    | ✅ Yes  | 🔶     | ✅  | ✅     | ✅     |
-| Recursive YAML / Anchors         | ✅ Yes  | 🔶     | 🔶  | 🔶     | 🔶     |
+# AnkaFlow vs Other Pipeline Frameworks
+
+| **Feature**                        | **AnkaFlow**              | **Airflow**              | **Dagster**              | **Bonobo**               | **Luigi**                | **DLT**                    |
+|------------------------------------|----------------------------|---------------------------|---------------------------|---------------------------|---------------------------|-----------------------------|
+| **In-Browser Execution (Pyodide)** | ✅ Yes                    | ❌                        | ❌                        | ❌                        | ❌                        | ❌                          |
+| **Dynamic Templating**             | ✅ Yes                    | 🔶 Partial (Jinja)        | 🔶 Partial                | 🔶 Basic                  | 🔶 Basic                  | 🔶 via Python               |
+| **REST + SQL Join**                | ✅ Native                 | 🔶 Plugin-based           | 🔶 Possible               | 🔶 Indirect               | 🔶 Indirect               | 🔶 via SQLMesh              |
+| **Python Transform**               | ✅ Yes                    | 🔶 Plugin-based           | ✅ Yes                    | ✅ Yes                    | ✅ Yes                    | ✅ Yes                      |
+| **Pure SQL Transforms**            | ✅ Native (DuckDB SQL)    | 🔶 via Plugins            | 🔶 Limited SQL Nodes      | ❌                        | ❌                        | ✅ via Destinations         |
+| **BigQuery / Delta / S3 **  | ✅ Native Support         | 🔶 via Plugins            | ✅ Integrations           | 🔶 User-managed           | 🔶 User-managed           | ✅ Native                   |
+| **Recursive YAML / Anchors**       | ✅ Yes                    | 🔶 via Jinja              | 🔶 Partial                | ❌                        | ❌                        | ❌                          |
+| **External System Requirements**   | ✅ None — self-contained  | ❌ Requires DB & Scheduler | 🔶 Optional Metadata DB   | ✅ Lightweight — no deps  | ❌ Requires Scheduler     | ✅ No built-in orchestration |
+| **Configuration-First Design**     | ✅ Declarative — code optional | 🔶 Code-first with DAGs    | 🔶 Hybrid — config & code | 🔶 Mostly code-based      | 🔶 Code-centric           | ❌ Code is required (Python) |
 
 ---
 
@@ -54,8 +59,7 @@ Duckflow is a YAML-driven, SQL-powered data pipeline framework designed for both
 
 - ✅ Fully battle-tested REST and GraphQL support
 - ✅ Python transform stage shipped
-- 🟠 IndexedDB caching (in progress)
-- 🟠 Streaming and Kafka/WebSocket support
+- ✅ IndexedDB caching
 - 🟠 Built-in data lineage tracking
 - 🟠 Parallel execution in local runtime
 
@@ -63,10 +67,18 @@ Duckflow is a YAML-driven, SQL-powered data pipeline framework designed for both
 
 ## Get Started Today
 
-Write once, run anywhere — from your laptop to the browser. Duckflow pipelines adapt to your workflow, combining flexibility, power, and portability.
+Write once, run anywhere — from your laptop to the browser. AnkaFlow pipelines adapt to your workflow, combining flexibility, power, and portability.
 
 [Learn more](#) or [View Examples](#)
 
+
+---
+
+## 📖 Documentation
+
+- [Technical Summary](#)
+- [Pipeline Specification](#)
+- [API Docs](#)
 
 ---
 

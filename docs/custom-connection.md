@@ -10,7 +10,7 @@ Welcome to the CustomConnection user guide. This document will walk you through:
 
 ## 1. Introduction
 
-`CustomConnection` allows you to plug in your own connection logic into the Ductflow pipeline. Your custom connection class must implement the base `Connection` interface (or derive from it), and provide the following methods:
+`CustomConnection` allows you to plug in your own connection logic into the AnkaFlow pipeline. Your custom connection class must implement the base `Connection` interface (or derive from it), and provide the following methods:
 
 - `tap()`: Extract data from the source
 - `sink()`: Write data to the destination
@@ -70,7 +70,7 @@ Explanation:
 In `myapp/connectors/database.py`:
 
 ```python
-from duckflow.connection import Connection
+from ankaflow.connection import Connection
 
 class MySQL(Connection):
     def init(self):
@@ -117,12 +117,8 @@ class MySQL(Connection):
 - **Validation**: Always validate your `params` against what your class expects. Mismatches will not raise errors at `Stages.load()` time but at runtime.
 - **Module Path**: Ensure your project’s root is on `PYTHONPATH` so that `import module` succeeds at runtime.
 - **Debugging**: Use `show: 1` in your YAML to print the output of tap().
-- **Error Handling**: Wrap your I/O in try/except blocks and surface meaningful messages; Ductflow will propagate exceptions upstream.
+- **Error Handling**: Wrap your I/O in try/except blocks and surface meaningful messages; Ankalow will propagate exceptions upstream.
 
 ---
-
-## 6. Download & Next Steps
-
-You can download this guide as a standalone `downloadable.md`, or embed it in your project docs. For advanced scenarios (e.g. dynamic locator lookup, multi-tenant configs), consult the developer reference.
 
 Happy piping!
