@@ -23,8 +23,8 @@ jobs:
 
       - name: Move browser assets into docs
         run: |
-          mkdir -p docs/browser
-          cp -r demo/* docs/demo/
+          mkdir -p docs/demo
+          cp -r pyodide/* docs/demo/
 
       - name: Build documentation
         run: mkdocs build

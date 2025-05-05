@@ -27,7 +27,7 @@ nav:
   - API:
       - Pipeline API: api/ducts.models.md
       - Duct API: api/ducts.md
-  - Browser demo: demo/index.html  # ← Added: demo page served from docs/browser/
+  - Browser demo: demo/index.html
 
 plugins:
   - search
