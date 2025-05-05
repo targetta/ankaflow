@@ -1,0 +1,874 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://example.com/docs/overview/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../getting-started/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+    
+    
+      
+        <title>Overview - AnkaFlow Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2afb09e1.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#technical-introduction-document-setting-up-and-configuring-a-data-pipeline-in-ankaflow" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AnkaFlow Documentation" class="md-header__button md-logo" aria-label="AnkaFlow Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AnkaFlow Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AnkaFlow Documentation" class="md-nav__button md-logo" aria-label="AnkaFlow Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AnkaFlow Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview-of-the-pipeline-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Overview of the Pipeline System
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-pipeline-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Pipeline Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-configuration-and-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Configuration and Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-executing-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Executing the Pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-error-handling-and-flow-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Error Handling and Flow Control
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-show-schema-for-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Show Schema for Stages
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing-and-debugging-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Testing and Debugging Pipelines
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readme-browser.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Browser setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom-connection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Custom connection
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../motherduck/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using with Motherduck
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/ducts.models.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Pipeline API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/ducts.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Duct API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Browser demo
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-overview-of-the-pipeline-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Overview of the Pipeline System
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-pipeline-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Pipeline Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-configuration-and-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Configuration and Setup
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-executing-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Executing the Pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-error-handling-and-flow-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Error Handling and Flow Control
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-show-schema-for-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Show Schema for Stages
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing-and-debugging-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Testing and Debugging Pipelines
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="technical-introduction-document-setting-up-and-configuring-a-data-pipeline-in-ankaflow">Technical Introduction Document: Setting Up and Configuring a Data Pipeline in AnkaFlow<a class="headerlink" href="#technical-introduction-document-setting-up-and-configuring-a-data-pipeline-in-ankaflow" title="Permanent link">&para;</a></h1>
+<p>This document provides a step-by-step guide for setting up and configuring a data pipeline using AnkaFlow. The pipeline framework facilitates seamless data transformations and efficient management of stages such as data sourcing (tap), transformations, and sink operations.</p>
+<h4 id="1-overview-of-the-pipeline-system">1. <strong>Overview of the Pipeline System</strong><a class="headerlink" href="#1-overview-of-the-pipeline-system" title="Permanent link">&para;</a></h4>
+<p>A pipeline in AnkaFlow defines the flow of data through various stages. Each stage corresponds to a specific data operation such as:</p>
+<ul>
+<li><strong>Tap Stage</strong>: Sources data from a remote or local system.</li>
+<li><strong>Transform Stage</strong>: Processes or transforms data, typically using SQL queries or other computational logic.</li>
+<li><strong>Sink Stage</strong>: Stores the processed data into a target system (e.g., a database, file system, or cloud storage).</li>
+</ul>
+<p>These stages are executed sequentially, with each stage building on the data produced by the previous one.</p>
+<h4 id="2-pipeline-components">2. <strong>Pipeline Components</strong><a class="headerlink" href="#2-pipeline-components" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Flow</strong>: The primary object that controls the execution of the pipeline. It defines the order of stages, manages connections, and handles error flow control.</li>
+</ul>
+<p><strong>Example Initialization</strong>:
+  <code>python
+  flow = Flow(
+      defs=stages, 
+      context=flowuct_context, 
+      default_connection=conn_config, 
+      logger=my_logger
+  )</code></p>
+<ul>
+<li><code>defs</code>: A list of stages (e.g., <code>TapStage</code>, <code>TransformStage</code>, <code>SinkStage</code>).</li>
+<li><code>context</code>: The dynamic context used in query templates.</li>
+<li><code>default_connection</code>: Connection configuration passed to the underlying systems.</li>
+<li>
+<p><code>logger</code>: Optional logger for logging pipeline activities.</p>
+</li>
+<li>
+<p><strong>Datablock</strong>: Represents an executable piece of the pipeline. Each <code>Datablock</code> corresponds to a specific stage and includes the logic to execute that stage, e.g., reading data, transforming it, or storing it.</p>
+</li>
+</ul>
+<p><strong>Example</strong>:
+  <code>python
+  datablock = Datablock(
+      conn=db_connection,
+      defs=datablock_def,
+      context=flow_context,
+      default_connection=conn_config
+  )</code></p>
+<ul>
+<li><strong>Stage Handler</strong>: Each stage (tap, transform, sink) is associated with a handler that defines how the stage should be executed. The handler interacts with the data and performs the necessary operations.</li>
+</ul>
+<h4 id="3-configuration-and-setup">3. <strong>Configuration and Setup</strong><a class="headerlink" href="#3-configuration-and-setup" title="Permanent link">&para;</a></h4>
+<p>To configure a pipeline, you must define the following:</p>
+<ul>
+<li><strong>Stages</strong>: Define the sequence of operations your pipeline will execute. Each stage must specify its type (<code>tap</code>, <code>transform</code>, <code>sink</code>) and the corresponding logic (e.g., queries, data manipulations).</li>
+<li><strong>Connection Configurations</strong>: Each stage typically connects to a data source or target system. Connection details, such as credentials, endpoint URLs, and database configurations, are passed into the stages.</li>
+</ul>
+<p><strong>Example</strong>:
+  <code>yaml
+  stages:
+    - kind: tap
+      name: source_data
+      connection:
+        kind: BigQuery
+        project_id: "my_project"
+        dataset: "my_dataset"
+    - kind: transform
+      name: process_data
+      query: "SELECT * FROM source_data WHERE condition"
+    - kind: sink
+      name: output_data
+      connection:
+        kind: File
+        file_path: "output/data.csv"</code></p>
+<ul>
+<li><strong>Variables</strong>: If your pipeline stages reference dynamic values, such as dates or keys, you can define these variables within the <code>context</code> to be injected into your queries at runtime.</li>
+</ul>
+<h4 id="4-executing-the-pipeline">4. <strong>Executing the Pipeline</strong><a class="headerlink" href="#4-executing-the-pipeline" title="Permanent link">&para;</a></h4>
+<p>Once the pipeline is defined, you can execute it using the <code>Flow</code> class. This will initiate the stages in sequence and handle the transformation of data across all stages.</p>
+<ul>
+<li>
+<p><strong>Run Pipeline</strong>: Execute the pipeline and get the final data.
+  <code>python
+  flow.run()</code></p>
+</li>
+<li>
+<p><strong>Access Output Data</strong>: Once the pipeline runs, you can access the data produced by the final stage via the <code>df()</code> method.
+  <code>python
+  result_df = flow.df()</code></p>
+</li>
+</ul>
+<h4 id="5-error-handling-and-flow-control">5. <strong>Error Handling and Flow Control</strong><a class="headerlink" href="#5-error-handling-and-flow-control" title="Permanent link">&para;</a></h4>
+<p>AnkaFlow provides robust error handling mechanisms, ensuring that errors are managed appropriately during pipeline execution. The <code>FlowControl</code> configuration allows you to define how errors should be handled (e.g., fail or warn).</p>
+<p>Example of flow control:</p>
+<pre><code class="language-python">flow_control = FlowControl(on_error=&quot;fail&quot;)
+</code></pre>
+<h4 id="6-show-schema-for-stages">6. <strong>Show Schema for Stages</strong><a class="headerlink" href="#6-show-schema-for-stages" title="Permanent link">&para;</a></h4>
+<p>Each stage may expose a schema that defines the structure of the data. This can be useful to inspect and verify the data format before moving to subsequent stages.</p>
+<pre><code class="language-python">schema = flow.show_schema()
+</code></pre>
+<h4 id="7-testing-and-debugging-pipelines">7. <strong>Testing and Debugging Pipelines</strong><a class="headerlink" href="#7-testing-and-debugging-pipelines" title="Permanent link">&para;</a></h4>
+<p>For reliable pipeline execution, it is important to test and debug each stage. AnkaFlow includes utilities for mock testing, simulating remote connections, and verifying the correctness of SQL queries.</p>
+<ul>
+<li><strong>Unit Tests</strong>: Each stage can be tested in isolation. For example, the <code>TapStageHandler</code> can be tested to ensure that it retrieves the correct data from the source.</li>
+</ul>
+<h4 id="8-conclusion">8. <strong>Conclusion</strong><a class="headerlink" href="#8-conclusion" title="Permanent link">&para;</a></h4>
+<p>With these components and configurations, AnkaFlow allows you to define, execute, and manage data pipelines flexibly. It integrates various data sources and sinks, applies transformations, and enables efficient error handling, all while keeping the pipeline definitions clean and reusable.</p>
+<p><strong>Next Steps</strong>:
+- Customize your pipeline based on the specific sources, transformations, and sinks relevant to your use case.
+- Explore advanced features like parallel pipeline execution and nested sub-pipelines for more complex workflows.</p>
+<p>This document serves as an introduction to configuring a basic pipeline setup in AnkaFlow. For more advanced configurations and features, refer to the detailed documentation on stages, handlers, and connections.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>
