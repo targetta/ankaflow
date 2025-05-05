@@ -76,7 +76,7 @@ Write once, run anywhere — from your laptop to the browser. AnkaFlow pipelines
 
 ## 📖 Documentation
 
-- [Technical Summary](#)
+- [Technical Summary](overview/)
 - [Pipeline Specification](#)
 - [API Docs](#)
 

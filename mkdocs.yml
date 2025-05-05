@@ -21,12 +21,12 @@ nav:
   - Overview: overview.md
   - Getting started: getting-started.md
   - Guides:
-      - Browser setup: readme-browser.md
+      - Browser setup: browser-readme.md
       - Custom connection: custom-connection.md
       - Using with Motherduck: motherduck.md
   - API:
-      - Pipeline API: api/ducts.models.md
-      - Duct API: api/ducts.md
+      - Pipeline API: api/ankaflow.models.md
+      - Duct API: api/ankaflow.md
   - Browser demo: demo/index.html
 
 plugins:
