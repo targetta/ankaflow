@@ -31,7 +31,7 @@ class BufferHandler(MemoryHandler):
         return [f"{record.getMessage()}\n----\n" for record in self.buffer]
 
 
-async def main(yaml_defs: str, env: dict = {}) -> str:
+async def main(yaml_defs: str, env: dict = None) -> str:
     """
     Entry point for Pyodide worker.
 
@@ -42,6 +42,7 @@ async def main(yaml_defs: str, env: dict = {}) -> str:
     Returns:
         str: JSON-encoded log messages.
     """
+    env = env or {}
     model_dict = parse_yaml(yaml_defs)
     defs = Stages.model_validate(model_dict)
     opts = ConnectionConfiguration(bucket="/tmp")
