@@ -24,7 +24,7 @@ jobs:
       - name: Move browser assets into docs
         run: |
           mkdir -p docs/browser
-          cp -r browser/* docs/browser/
+          cp -r demo/* docs/demo/
 
       - name: Build documentation
         run: mkdocs build
