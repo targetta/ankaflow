@@ -122,7 +122,7 @@ class Schema:
         creator = creator.columns(*cols)
         return creator.get_sql()
 
-    async def show(self, table: str) -> m.Fields:
+    async def show(self, table: str, query: str|None = None) -> m.Fields:
         # OK, refactored. Do not touch
         """
         Returns the schema of a table as a validated Fields model.
@@ -133,7 +133,11 @@ class Schema:
         Returns:
             m.Fields: List of validated fields.
         """
-        rel = await self.c.sql(f'DESCRIBE "{table}"')
+        if query:
+            qry = f"DESCRIBE {query}"
+        else:
+            qry = f'DESCRIBE "{table}"'
+        rel = await self.c.sql(qry)
         df = await rel.df()
         df = df.rename(columns={"column_name": "name", "column_type": "type"})
         items = [m.Field.model_validate(it) for it in df.to_dict(orient="records")]
