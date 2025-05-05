@@ -28,9 +28,9 @@ class Deltatable(Connection):
     def init(self):
         # TODO: implement locking client
         # https://delta-io.github.io/delta-rs/usage/writing/writing-to-s3-with-locking-provider/
-        self.delta_opts = None
+        self.delta_opts = {}
         if self.cfg.s3.access_key_id:  # type: ignore
-            self.delta_opts = {
+            self.delta_opts.update({
                 # Without locking client
                 # Atomic rename requires a LockClient for S3 backends
                 "aws_s3_allow_unsafe_rename": "true",
@@ -38,12 +38,9 @@ class Deltatable(Connection):
                 "aws_access_key_id": self.cfg.s3.access_key_id,  # type: ignore
                 "aws_secret_access_key": self.cfg.s3.secret_access_key,  # type: ignore
                 "aws_region": self.cfg.s3.region,  # type: ignore
-            }
+            })
         if self.cfg.gs.credential_file:
-            self.delta_opts = {"service_account_path": self.cfg.gs.credential_file}
-        # else:
-        #     self.delta_opts = {"aws_s3_allow_unsafe_rename": "true"}
-        log.debug(self.delta_opts)
+            self.delta_opts.update({"service_account_path": self.cfg.gs.credential_file})
 
     async def _maybe_optimize(self, uri: str):  # Enhanced with validation and warnings
         """
@@ -442,6 +439,10 @@ class Deltatable(Connection):
         except CatalogException:
             pass
         try:
+            # TODO: actually read 1 record
+            # this allows dependant transforms to be explained
+            # Idea: add 'materialize option, or create arrow table
+            # with single row and insert using nanoarrow
             path = self.locate()
 
             if not dl.DeltaTable.is_deltatable(path):
@@ -449,7 +450,6 @@ class Deltatable(Connection):
 
             table = dl.DeltaTable(path)
             arrow_schema: pa.Schema = table.schema().to_pyarrow()
-
             fields = [
                 m.Field(name=field.name, type=str(field.type)) for field in arrow_schema
             ]
