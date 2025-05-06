@@ -97,7 +97,7 @@ class DummyConnection:
     async def sql(self, query: str) -> DummyResult:
         return await self.idb.sql(query)
 
-    async def show_schema(self, print: bool = False) -> t.List[dict]:
+    async def show_schema(self) -> t.List[dict]:
         return [
             {"name": "id", "type": "int"},
             {"name": "value", "type": "text"},

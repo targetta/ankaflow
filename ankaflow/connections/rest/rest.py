@@ -285,12 +285,12 @@ class Rest(Connection):
     def parse_config(self, config: dict):
         pass
 
-    async def show_schema(self, print: bool = False, tap: bool = False):
+    async def show_schema(self, tap: bool = False):
         # We need to tap before schema can be shown
         # Unless the schema has already been inferred
         if tap:
             await self.tap()
-        return await self.schema_.show(self.name, print=print)
+        return await self.schema_.show(self.name)
 
     async def tap(self, query: str = None, limit: int = None):
         try:
@@ -302,7 +302,7 @@ class Rest(Connection):
                 e,
                 "Should supply explicit schema",
                 "Inferred schema:",
-                await self.show_schema(True, tap=False),
+                await self.show_schema(tap=False),
             ]
             self.log.warning(print_error(*msg))
             raise
