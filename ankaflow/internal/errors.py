@@ -1,6 +1,13 @@
-class BinderException(Exception):
-    pass
+from duckdb import (
+    ParserException,
+    SyntaxException,
+    CatalogException,
+    BinderException,
+)
 
-
-class CatalogException(Exception):
-    pass
+__all__ = [
+    "ParserException",
+    "SyntaxException",
+    "CatalogException",
+    "BinderException",
+]
