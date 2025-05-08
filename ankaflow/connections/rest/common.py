@@ -30,6 +30,11 @@ class RestRetryableError(Exception):
     pass
 
 
+class MaterializerProtocol(t.Protocol):
+    async def materialize(self, data: t.Union[str, dict, list]) -> t.Any:
+        ...
+
+
 class Materializer:
     """
     Materializer class provides support for inserting

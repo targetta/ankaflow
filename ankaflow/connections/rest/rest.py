@@ -8,7 +8,7 @@ from pathlib import Path
 import jmespath
 import sys
 from ... import models as m
-from .common import Materializer, MaterializeError
+from .common import MaterializerProtocol, Materializer, MaterializeError
 from ..connection import Connection
 from ...common.util import print_error
 from ...internal import DDB
@@ -68,7 +68,8 @@ class PaginationHandler(ResponseHandler):
         # When api reports total records use it
         if self.res.handler.total_records:
             total_count = (
-                int(jmespath.search(self.res.handler.total_records, self._data)) or 0
+                int(jmespath.search(self.res.handler.total_records, self._data))
+                or 0
             )  # noqa:E501
             if total_count <= self._received_count:
                 return False
@@ -96,7 +97,9 @@ class PaginationHandler(ResponseHandler):
         if not self.has_next():
             return None
         next_req = self.req.model_copy(deep=True)
-        self.current_page = int(self.current_page) + int(self.res.handler.increment)  #  noqa:E501
+        self.current_page = int(self.current_page) + int(
+            self.res.handler.increment
+        )  #  noqa:E501
         if self.res.handler.param_locator == m.ParameterDisposition.QUERY:
             next_req.query[self.res.handler.page_param] = self.current_page
         else:
@@ -157,7 +160,7 @@ class RestApi:
     def __init__(
         self,
         client: m.RestClientConfig,
-        materializer: Materializer,
+        materializer: MaterializerProtocol,
         logger: logging.Logger = None,
     ):
         """
