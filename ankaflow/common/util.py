@@ -79,7 +79,9 @@ class ProgressLogger:
         self._start = time.monotonic()
         self.total = 0
         self.show_memory: bool = False
-        self._rss_baseline: float | None = None  # Only set if psutil is available
+        self._rss_baseline: float | None = (
+            None  # Only set if psutil is available
+        )
 
     def _get_rss(self) -> float:
         """Get current process RSS in MB."""
@@ -114,7 +116,9 @@ class ProgressLogger:
             else:
                 mem = ", RSS: - MB"
 
-        self.logger.debug(f"{self.event} {self.total} in {round(elapsed, 1)}s{mem}")
+        self.logger.debug(
+            f"{self.event} {self.total} in {round(elapsed, 1)}s{mem}"
+        )
 
 
 def console_logger(
@@ -140,8 +144,25 @@ def console_logger(
 
     log = logging.getLogger(name)
     log.setLevel(level)
-    log.addHandler(console)
+    # prevent multiple handlers
+    if not log.handlers:
+        log.addHandler(console)
     return log
+
+
+def null_logger() -> logging.Logger:
+    """Return a logger with a NullHandler that discards all logging messages.
+    Extra guart CRITICAL+1 to reduce all message processing
+
+    Returns:
+        logging.Logger: A logger instance with a NullHandler attached.
+    """
+    logger = logging.getLogger(f"null:{__name__}")
+    if not logger.handlers:
+        logger.addHandler(logging.NullHandler())
+    logger.setLevel(logging.CRITICAL + 1)
+    logger.propagate = False
+    return logger
 
 
 def string_to_bool(value: str) -> bool:
@@ -219,7 +240,7 @@ def asyncio_run(coro):
     try:
         loop = asyncio.get_running_loop()
         if loop.is_running():
-            # Use asyncio.ensure_future to schedule execution within the running loop
+            # Schedule execution in the running loop
             future = asyncio.ensure_future(coro)
             return future.result()  # This will raise an error because we can't directly block in the same thread  # noqa: E501
     except RuntimeError:
@@ -284,12 +305,10 @@ def duckdb_to_pyarrow_type(duckdb_type: str):
         struct_schema = []
         for field in struct_fields.split(", "):
             field_name, field_type = field.split(" ", 1)
-            struct_schema.append(
-                (
-                    field_name.strip('"'),
-                    duckdb_to_pyarrow_type(field_type),
-                )
-            )
+            struct_schema.append((
+                field_name.strip('"'),
+                duckdb_to_pyarrow_type(field_type),
+            ))
         return pa.list_(pa.struct(struct_schema))
 
     # Handle STRUCT(...) types
@@ -299,12 +318,10 @@ def duckdb_to_pyarrow_type(duckdb_type: str):
         struct_schema = []
         for field in struct_fields.split(", "):
             field_name, field_type = field.split(" ", 1)
-            struct_schema.append(
-                (
-                    field_name.strip('"'),
-                    duckdb_to_pyarrow_type(field_type),
-                )
-            )
+            struct_schema.append((
+                field_name.strip('"'),
+                duckdb_to_pyarrow_type(field_type),
+            ))
         return pa.struct(struct_schema)
 
     # Handle simple types
@@ -408,10 +425,15 @@ def validate_simple_query(query: str, ranking_enabled: bool) -> None:
 
     if ranking_enabled:
         if tree.args.get("group"):
-            raise ValueError("GROUP BY is not supported when ranking is applied.")
+            raise ValueError(
+                "GROUP BY is not supported when ranking is applied."
+            )
         # Optional: look for aggregate functions via regex or AST walk
         lowered = query.lower()
-        if any(func in lowered for func in ["avg(", "sum(", "count(", "min(", "max("]):
+        if any(
+            func in lowered
+            for func in ["avg(", "sum(", "count(", "min(", "max("]
+        ):
             raise ValueError(
                 "Aggregate functions are not allowed when ranking is applied."
             )
