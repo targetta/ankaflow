@@ -15,7 +15,7 @@ else:
 
 from .macros import Fn
 from ..common.filesystem import FileSystem
-from ..models import BucketConfig, ConnectionConfiguration
+from ..models.configs import BucketConfig, ConnectionConfiguration
 from ..common.path import PathFactory, RemotePath
 
 
@@ -25,12 +25,12 @@ log = logging.getLogger(__name__)
 class DuckDBIORewriter:
     def __init__(self, remote: "RemoteObject", filesystem: FileSystem):
         """
-        Intercepts and rewrites DuckDB read_*() calls that reference remote paths.
+        Intercepts and rewrites DuckDB read() calls that reference remote paths.
 
         Args:
             scope (str): scope of the current rewrite (stage name)
             remote (RemoteObject): Remote downloader/uploader.
-            filesystem (FileSystem): Local filesystem to store downloaded content.
+            filesystem (FileSystem): Local filesystem to store fetched content.
         """
         self.remote = remote
         self.fs: FileSystem = filesystem
@@ -48,7 +48,9 @@ class DuckDBIORewriter:
         Raises:
             NotImplementedError: For globs or multi-file remote reads.
         """
-        pattern = r"read_(parquet|csv|json)(_auto)?\s*\(\s*(\[.*?\]|'.*?'|\".*?\")"  # noqa:E501
+        pattern = (
+            r"read_(parquet|csv|json)(_auto)?\s*\(\s*(\[.*?\]|'.*?'|\".*?\")"  # noqa:E501
+        )
         matches = re.findall(pattern, query)
 
         for _, _, arg_str in matches:
@@ -59,7 +61,9 @@ class DuckDBIORewriter:
 
                 if isinstance(path, RemotePath):
                     if path.is_glob:
-                        raise NotImplementedError("Remote globs are not supported.")
+                        raise NotImplementedError(
+                            "Remote globs are not supported."
+                        )
                     if len(paths) > 1:
                         raise NotImplementedError(
                             "Multiple remote files are not supported."
@@ -142,7 +146,7 @@ class RemoteObject:
             response = await pyfetch(url)
             if not response.ok:
                 raise IOError(
-                    f"Fetch failed: {response.status} {response.statusText} for {remote_path}"  # noqa:E501
+                    f"Fetch failed: {response.status} {response.statusText} for {remote_path}"  # noqa:E501 # type: ignore
                 )
             return await response.bytes()
         except Exception as e:
@@ -376,7 +380,9 @@ class DDB:
 
     async def delta_scan(self):
         """Stub for unsupported delta_scan."""
-        raise NotImplementedError("delta_scan is not supported in browser environment")
+        raise NotImplementedError(
+            "delta_scan is not supported in browser environment"
+        )
 
     async def parquet_scan(self):
         """Stub for unsupported parquet_scan."""

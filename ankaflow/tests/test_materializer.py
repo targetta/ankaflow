@@ -6,6 +6,8 @@ from pathlib import Path
 import logging
 
 from ..connections.rest import common
+from ..models import enums
+from .. import models as m
 
 class TestMaterializer(unittest.IsolatedAsyncioTestCase):
 
@@ -19,10 +21,10 @@ class TestMaterializer(unittest.IsolatedAsyncioTestCase):
         self.mock_logger = MagicMock(spec=logging.Logger)
         self.materializer = common.Materializer(
             self.mock_connection,
-            common.m.DataType.JSONL,
+            enums.DataType.JSONL,
             "test_table",
             self.mock_schema,
-            columns=[common.m.Field(name="col1", type="VARCHAR")],
+            columns=[m.Column(name="col1", type="VARCHAR")],
             logger=self.mock_logger,
         )
 
@@ -84,7 +86,7 @@ class TestMaterializer(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test__insert_data_csv(self):
-        self.materializer.dtype = common.m.DataType.CSV
+        self.materializer.dtype = enums.DataType.CSV
         mock_buffer = MagicMock()
         await self.materializer._insert_data(mock_buffer)
         self.mock_connection.read_csv.assert_called_once_with(
@@ -92,7 +94,7 @@ class TestMaterializer(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test__insert_data_parquet(self):
-        self.materializer.dtype = common.m.DataType.PARQUET
+        self.materializer.dtype = enums.DataType.PARQUET
         mock_buffer = MagicMock()
         await self.materializer._insert_data(mock_buffer)
         self.mock_connection.read_parquet.assert_called_once_with(

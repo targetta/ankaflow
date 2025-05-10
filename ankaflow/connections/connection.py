@@ -3,12 +3,16 @@ import logging
 from pypika import PostgreSQLQuery, Column
 from sqlglot.dialects.dialect import Dialects
 import re
-from io import StringIO
-import json
 
 from ..common.path import PathFactory, CommonPath, RemotePath
-from ..common.util import build_ranked_query, validate_simple_query, ConfigResolver
+from ..common.util import (
+    build_ranked_query,
+    validate_simple_query,
+    ConfigResolver,
+)
 from .. import models as m
+from ..models.configs import ConnectionConfiguration
+from ..models.connections import PhysicalConnection, VersionedConnection
 from .. import errors as e
 from ..internal import DDB
 
@@ -16,8 +20,11 @@ from ..internal import DDB
 log = logging.getLogger(__name__)
 
 
+class UnionConnection(PhysicalConnection, VersionedConnection): ...
+
+
 class Locator:
-    def __init__(self, config: m.ConnectionConfiguration) -> None:
+    def __init__(self, config: ConnectionConfiguration) -> None:
         """
         Initializes the Locator with connection configuration.
 
@@ -69,7 +76,9 @@ class Locator:
 
         # Normalize prefix to same path type
         prefix = (self.prefix or "").lstrip("/")
-        prefix_path = root_path.joinpath(*prefix.split("/")) if prefix else root_path
+        prefix_path = (
+            root_path.joinpath(*prefix.split("/")) if prefix else root_path
+        )
 
         # Convert absolute local paths to relative
         if (
@@ -100,7 +109,9 @@ class Schema:
         self.c = duck
         self.schema_ = None  # type: ignore[assignment]
 
-    def generate(self, table: str, fields: m.Fields, exists_ok: bool = False) -> str:
+    def generate(
+        self, table: str, fields: m.Columns, exists_ok: bool = False
+    ) -> str:
         """
         Generates CREATE TABLE statement from schema.
 
@@ -122,7 +133,7 @@ class Schema:
         creator = creator.columns(*cols)
         return creator.get_sql()
 
-    async def show(self, table: str, query: str|None = None) -> m.Fields:
+    async def show(self, table: str, query: str | None = None) -> m.Columns:
         # OK, refactored. Do not touch
         """
         Returns the schema of a table as a validated Fields model.
@@ -140,8 +151,10 @@ class Schema:
         rel = await self.c.sql(qry)
         df = await rel.df()
         df = df.rename(columns={"column_name": "name", "column_type": "type"})
-        items = [m.Field.model_validate(it) for it in df.to_dict(orient="records")]
-        return m.Fields.model_validate(items)
+        items = [
+            m.Column.model_validate(it) for it in df.to_dict(orient="records")
+        ]
+        return m.Columns.model_validate(items)
 
     # TODO cleanup once no known problems
     # async def get_fields(self, table: str) -> t.List[m.Field]:
@@ -174,9 +187,9 @@ class Schema:
     #     self.schema_: t.List[m.Field] = await self.get_fields(name)
     #     return self.schema_
 
-    def error(self, message) -> m.Fields:
+    def error(self, message) -> m.Columns:
         # Ok refactored
-        return m.Fields.error(str(message))
+        return m.Columns.error(str(message))
 
 
 class Connection:
@@ -190,7 +203,7 @@ class Connection:
         self,
         duck: DDB,
         name: str,
-        connection: m.Connection,
+        connection: UnionConnection,
         context: m.FlowContext,
         variables: m.Variables,
         logger: logging.Logger = None,  # type: ignore[assignment]
@@ -221,7 +234,7 @@ class Connection:
         pass
 
     def locate(self, name: str = None, use_wildcard: bool = False) -> str:  # type: ignore[assignment]
-        name = name or self.conn.locator
+        name = str(name or self.conn.locator)
         return str(self.locator.locate(name, use_wildcard=use_wildcard))
 
     async def create_table(self):
@@ -250,7 +263,9 @@ class Connection:
 
         Returns:
             tuple[str, str]: Transformed SQL query and the WHERE clause if applicable.
-        """
+        """  # noqa: E501
+        if not isinstance(self.conn, VersionedConnection):
+            return query, ""
         apply_ranking = bool(self.conn.version and self.conn.key)
 
         # Validate before building
@@ -282,7 +297,7 @@ class Connection:
         """
         raise NotImplementedError("Store object must be implemented")
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         raise NotImplementedError("Schema not available")
 
     async def sql(self, statement: str) -> t.Any:
@@ -290,18 +305,3 @@ class Connection:
         Execute raw sql using the specified connection (if supported).
         """
         raise NotImplementedError("SQL execution not available")
-
-
-class Variable(Connection):
-    async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        try:
-            var = self.vars[self.conn.locator]
-        except KeyError:
-            var = None
-        var_str = json.dumps(var)
-        await self.c.read_json(StringIO(var_str), self.name, {})
-
-    async def sink(self, from_name: str):
-        rel = await self.c.sql(f'SELECT * FROM "{from_name}"')
-        df = await rel.df()
-        self.vars[self.conn.locator] = df.to_dict(orient="records")

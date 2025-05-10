@@ -6,11 +6,12 @@ from sqlglot import parse_one
 import logging
 import pyarrow as pa
 import pandas as pd
-from enum import Enum
 
 from . import errors as e
 from .. import errors as ee
 from .. import models as m
+from ..models.enums import SinkStrategy
+from ..models.connections import DeltatableConnection
 from ..internal import CatalogException
 from .connection import Connection
 from ..common.util import pandas_to_pyarrow, duckdb_to_pyarrow_type
@@ -18,35 +19,30 @@ from ..common.util import pandas_to_pyarrow, duckdb_to_pyarrow_type
 log = logging.getLogger(__name__)
 
 
-class SinkStrategy(str, Enum):
-    SKIP = "skip"
-    CREATE = "create"
-    WRITE = "write"
-
-
 class Deltatable(Connection):
     def init(self):
+        self.conn = t.cast(DeltatableConnection, self.conn)
         # TODO: implement locking client
         # https://delta-io.github.io/delta-rs/usage/writing/writing-to-s3-with-locking-provider/
         self.delta_opts = {}
         if self.cfg.s3.access_key_id:  # type: ignore
-            self.delta_opts.update(
-                {
-                    # Without locking client
-                    # Atomic rename requires a LockClient for S3 backends
-                    "aws_s3_allow_unsafe_rename": "true",
-                    "aws_ec2_metadata_disabled": "true",
-                    "aws_access_key_id": self.cfg.s3.access_key_id,  # type: ignore
-                    "aws_secret_access_key": self.cfg.s3.secret_access_key,  # type: ignore
-                    "aws_region": self.cfg.s3.region,  # type: ignore
-                }
-            )
+            self.delta_opts.update({
+                # Without locking client
+                # Atomic rename requires a LockClient for S3 backends
+                "aws_s3_allow_unsafe_rename": "true",
+                "aws_ec2_metadata_disabled": "true",
+                "aws_access_key_id": self.cfg.s3.access_key_id,  # type: ignore
+                "aws_secret_access_key": self.cfg.s3.secret_access_key,  # type: ignore
+                "aws_region": self.cfg.s3.region,  # type: ignore
+            })
         if self.cfg.gs.credential_file:
-            self.delta_opts.update(
-                {"service_account_path": self.cfg.gs.credential_file}
-            )
+            self.delta_opts.update({
+                "service_account_path": self.cfg.gs.credential_file
+            })
 
-    async def _maybe_optimize(self, uri: str):  # Enhanced with validation and warnings
+    async def _maybe_optimize(
+        self, uri: str
+    ):  # Enhanced with validation and warnings
         """
         Optionally optimizes and vacuums the Delta table
         based on self.conn.optimize.
@@ -73,7 +69,9 @@ class Deltatable(Connection):
                 )
                 return
             if option * 24 > max_age:
-                self.log.warning(f"Optimize retention exceeds max: {option} days > 365")
+                self.log.warning(
+                    f"Optimize retention exceeds max: {option} days > 365"
+                )
                 return
         except (ValueError, TypeError):
             pass
@@ -146,7 +144,9 @@ class Deltatable(Connection):
         selectable = f"delta_scan('{self.locate(use_wildcard=True)}')"
 
         # Replace the source with the real delta_scan(...) call
-        qry, where_clause = self.ranking(selectable, query, validate_simple=True)
+        qry, where_clause = self.ranking(
+            selectable, query, validate_simple=True
+        )
 
         # Apply optional limit
         if limit:
@@ -161,8 +161,12 @@ class Deltatable(Connection):
         try:
             await self.c.sql(final_sql)
         except Exception as ex:
-            if "MissingVersionError" in str(ex) or "InvalidTableLocation" in str(ex):
-                raise e.UnrecoverableTapError(f"Tap source missing: {self.name}")
+            if "MissingVersionError" in str(
+                ex
+            ) or "InvalidTableLocation" in str(ex):
+                raise e.UnrecoverableTapError(
+                    f"Tap source missing: {self.name}"
+                )
             log.exception(ex)
             raise
 
@@ -205,7 +209,7 @@ class Deltatable(Connection):
         await self.c.sql(f'DROP VIEW IF EXISTS "{view_name}"')
 
     async def _to_arrow(
-        self, df: pd.DataFrame, schema: t.Union[m.Fields, t.List[m.Field]]
+        self, df: pd.DataFrame, schema: t.Union[m.Columns, t.List[m.Column]]
     ) -> pa.Table:
         """
         Converts a DataFrame to a PyArrow Table using the provided schema.
@@ -226,16 +230,16 @@ class Deltatable(Connection):
         Returns:
             str: A stringified dictionary with table metadata.
         """
-        return str(
-            {
-                "note": "Table rows are versioned",
-                "pk": ",".join(self.conn.key or []),
-                "ver": self.conn.version,
-                "part": ",".join(self.conn.partition or []),
-            }
-        )
+        return str({
+            "note": "Table rows are versioned",
+            "pk": ",".join(self.conn.key or []),
+            "ver": self.conn.version,
+            "part": ",".join(self.conn.partition or []),
+        })
 
-    def _make_delta_kwargs(self, meta: t.Optional[str], create_flag: bool) -> dict:
+    def _make_delta_kwargs(
+        self, meta: t.Optional[str], create_flag: bool
+    ) -> dict:
         """
         Constructs keyword arguments for the dl.write_deltalake call.
 
@@ -252,12 +256,10 @@ class Deltatable(Connection):
             "storage_options": self.delta_opts,
         }
         if create_flag:
-            kwargs.update(
-                {
-                    "partition_by": self.conn.partition,
-                    "description": meta,
-                }
-            )
+            kwargs.update({
+                "partition_by": self.conn.partition,
+                "description": meta,
+            })
         return kwargs
 
     async def _write_deltatable(
@@ -297,12 +299,10 @@ class Deltatable(Connection):
                 "Cannot create empty Delta table: no schema fields provided."
             )  # noqa:E501
 
-        schema = pa.schema(
-            [
-                (field.name, duckdb_to_pyarrow_type(field.type))
-                for field in self.conn.fields
-            ]
-        )
+        schema = pa.schema([
+            (field.name, duckdb_to_pyarrow_type(field.type))
+            for field in self.conn.fields
+        ])
 
         def default_for_type(pa_type: pa.DataType) -> t.Any:
             if pa.types.is_integer(pa_type):
@@ -314,7 +314,8 @@ class Deltatable(Connection):
             return None  # fallback
 
         dummy_data = {
-            f.name: pa.array([default_for_type(f.type)], type=f.type) for f in schema
+            f.name: pa.array([default_for_type(f.type)], type=f.type)
+            for f in schema
         }
         dummy_table = pa.table(dummy_data)
 
@@ -350,7 +351,9 @@ class Deltatable(Connection):
             return SinkStrategy.CREATE
         return SinkStrategy.WRITE
 
-    async def _infer_schema(self, df: t.Optional[pd.DataFrame] = None) -> pa.Schema:
+    async def _infer_schema(
+        self, df: t.Optional[pd.DataFrame] = None
+    ) -> pa.Schema:
         """
         Infers schema either from DataFrame or from self.conn.fields.
 
@@ -373,12 +376,10 @@ class Deltatable(Connection):
                 "No data or declared schema available to infer schema."
             )
 
-        return pa.schema(
-            [
-                (field.name, duckdb_to_pyarrow_type(field.type))
-                for field in self.conn.fields
-            ]
-        )
+        return pa.schema([
+            (field.name, duckdb_to_pyarrow_type(field.type))
+            for field in self.conn.fields
+        ])
 
     async def sink(self, from_name: str):
         """
@@ -416,7 +417,9 @@ class Deltatable(Connection):
 
         tbl = await self._to_arrow(df, schema)
 
-        is_delta = dl.DeltaTable.is_deltatable(uri, storage_options=self.delta_opts)
+        is_delta = dl.DeltaTable.is_deltatable(
+            uri, storage_options=self.delta_opts
+        )
         if strategy == SinkStrategy.CREATE:
             # Only create explicitly if no Delta table exists and we have schema
             if not is_delta and self.conn.fields:
@@ -437,7 +440,7 @@ class Deltatable(Connection):
             except DeltaError as ex:
                 raise e.ConnectionException(f"Optimize failed: {ex}") from None
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         try:
             return await self.schema_.show(self.name)
         except CatalogException:
@@ -450,18 +453,21 @@ class Deltatable(Connection):
             path = self.locate()
 
             if not dl.DeltaTable.is_deltatable(path):
-                return m.Fields.error(f"Path is not a delta table: {path}")
+                return m.Columns.error(f"Path is not a delta table: {path}")
 
             table = dl.DeltaTable(path)
             arrow_schema: pa.Schema = table.schema().to_pyarrow()
             fields = [
-                m.Field(name=field.name, type=str(field.type)) for field in arrow_schema
+                m.Column(name=field.name, type=str(field.type))
+                for field in arrow_schema
             ]
 
-            return m.Fields.model_validate(fields)
+            return m.Columns.model_validate(fields)
 
         except Exception as err:
-            self.log.warning(f"Failed to read Delta schema for {self.name}: {err}")
+            self.log.warning(
+                f"Failed to read Delta schema for {self.name}: {err}"
+            )
             return self.schema_.error(str(err))
 
     async def sql(self, statement: str):

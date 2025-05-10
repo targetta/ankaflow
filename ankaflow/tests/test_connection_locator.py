@@ -2,17 +2,14 @@ import unittest
 
 from ..connections.connection import Locator  # Adjust import as needed
 from ..common.path import S3Path, LocalPath
-from ..models import ConnectionConfiguration, S3Config
+from ..models.configs import ConnectionConfiguration, S3Config
 
 
 class LocatorTest(unittest.TestCase):
-
     def make_cfg(self, bucket, prefix="", wildcard=None):
         return ConnectionConfiguration(
             s3=S3Config(
-                bucket=bucket,
-                data_prefix=prefix,
-                locator_wildcard=wildcard
+                bucket=bucket, data_prefix=prefix, locator_wildcard=wildcard
             )
         )
 
@@ -21,7 +18,9 @@ class LocatorTest(unittest.TestCase):
         locator = Locator(cfg)
         result = locator.locate("2024/region.parquet")
         self.assertIsInstance(result, S3Path)
-        self.assertEqual(str(result), "s3://my-bucket/sales/2024/region.parquet")
+        self.assertEqual(
+            str(result), "s3://my-bucket/sales/2024/region.parquet"
+        )
 
     def test_absolute_s3_path(self):
         cfg = self.make_cfg("s3://my-bucket", "ignored-prefix")
@@ -44,10 +43,14 @@ class LocatorTest(unittest.TestCase):
         self.assertEqual(str(result), "s3://my-bucket/simple.csv")
 
     def test_wildcard_replacement_applied(self):
-        cfg = self.make_cfg("s3://my-bucket", "prefix", wildcard=(r"\$", "2024_"))
+        cfg = self.make_cfg(
+            "s3://my-bucket", "prefix", wildcard=(r"\$", "2024_")
+        )
         locator = Locator(cfg)
         result = locator.locate("sales$.parquet", use_wildcard=True)
-        self.assertEqual(str(result), "s3://my-bucket/prefix/sales2024_.parquet")
+        self.assertEqual(
+            str(result), "s3://my-bucket/prefix/sales2024_.parquet"
+        )
 
     def test_invalid_bucket_raises(self):
         cfg = self.make_cfg("relative/path")

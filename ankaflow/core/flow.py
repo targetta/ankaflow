@@ -8,6 +8,7 @@ from duckdb import CatalogException
 import logging
 import pandas as pd
 from asyncio import sleep
+from pydantic import BaseModel
 
 from .policy import FlowControl
 from .. import models as m
@@ -15,7 +16,7 @@ from .. import errors as e
 from ..api import API
 from ..internal import DDB
 from .. import connections as c
-from ..common.util import print_df, print_error, asyncio_run, string_to_bool
+from ..common.util import print_df, print_error, asyncio_run, string_to_bool, null_logger
 from ..common.renderer import Renderer
 
 log = logging.getLogger(__name__)
@@ -34,18 +35,18 @@ class BaseStageHandler:
 
     require_connection = False
 
-    def __init__(self, datablock: "Datablock") -> None:
+    def __init__(self, block: "StageBlock") -> None:
         """
         Args:
-            datablock (Datablock): The datablock to be executed.
+            block (StageBlock): The stage to be executed.
         """
-        self.block = datablock
-        self.defs = datablock.defs
-        self.log = datablock.log
-        self.default_connection = datablock.default_connection
-        self.idb = datablock.idb
-        self.ctx = datablock.ctx
-        self.vars = datablock.vars
+        self.block = block
+        self.defs = block.defs
+        self.log = block.log
+        self.default_connection = block.default_connection
+        self.idb = block.idb
+        self.ctx = block.ctx
+        self.vars = block.vars
         self._connection: c.Connection | None = None
 
     async def _show(self, limit: t.Union[int, float]) -> str:
@@ -103,7 +104,7 @@ class BaseStageHandler:
         """
         raise NotImplementedError("Must implement execute() in subclass.")
 
-    async def show_schema(self) -> t.Optional[m.SchemaItem]:
+    async def show_schema(self) -> t.Optional[m.core.SchemaItem]:
         return None
 
 
@@ -175,7 +176,7 @@ class PipelineStageHandler(BaseStageHandler):
             return None
 
     # TODO: pull schema from flow
-    async def show_schema(self) -> t.Optional[m.SchemaItem]:
+    async def show_schema(self) -> t.Optional[m.core.SchemaItem]:
         self.log.warning(f"Pipeline stage '{self.block.defs.name}' has no schema")
         return None
 
@@ -212,7 +213,7 @@ class TapStageHandler(BaseStageHandler):
             self.log.info(await self._show(src.show))
         return name
 
-    async def show_schema(self) -> t.Optional[m.SchemaItem]:
+    async def show_schema(self) -> t.Optional[m.core.SchemaItem]:
         await self._init_connection()
         conn = self._connection
         if not conn:
@@ -227,7 +228,7 @@ class TapStageHandler(BaseStageHandler):
             self.log.error(e)
             raise
 
-        return m.SchemaItem(
+        return m.core.SchemaItem(
             table=self.defs.name,
             locator=self.defs.connection.locator,
             kind=self.defs.connection.kind,
@@ -250,7 +251,7 @@ class TransformStageHandler(BaseStageHandler):
         await self.idb.sql(f'CREATE OR REPLACE VIEW "{name}" as {src.query}')
         if src.show_schema:
             sch = c.connection.Schema(self.idb)
-            fields: m.Fields = await sch.show(name)
+            fields: m.Columns = await sch.show(name)
             self.log.info(f"Schema of '{name}'\n{fields.print()}")
         if src.show:
             self.log.info(await self._show(src.show))
@@ -350,31 +351,31 @@ class StageFactory:
     }
 
     @staticmethod
-    async def get_handler(datablock: "Datablock") -> BaseStageHandler:
+    async def get_handler(block: "StageBlock") -> BaseStageHandler:
         """
         Creates a stage handler instance.
 
         Args:
-            datablock (Datablock): The datablock instance.
+           block ("StageBlock"): The datablock instance.
 
         Returns:
             BaseStageHandler: The corresponding stage handler.
         """
         try:
-            kind = datablock.defs.kind.lower()
+            kind = block.defs.kind.lower()
             hndlr = StageFactory.HANDLERS[kind]
-            return hndlr(datablock)
+            return hndlr(block)
         except (KeyError, TypeError):
             raise ValueError(f"Unknown stage kind: {kind!r}")
 
 
-class Datablock:
+class StageBlock:
     """Executable piece of a pipeline."""
 
     def __init__(
         self,
         conn: "DDB",
-        defs: m.Datablock,
+        defs: m.Stage,
         context: m.FlowContext,
         default_connection: m.ConnectionConfiguration,
         variables: t.Optional[m.Variables] = None,
@@ -385,7 +386,7 @@ class Datablock:
         """
         Args:
             conn (DDB): DuckDB connection.
-            defs (m.Datablock): Datablock definition.
+            defs (m.Stage): Stage definition.
             context (m.FlowContext): Context object.
             default_connection (m.ConnectionConfiguration): Global persistent
                 connection configuration.
@@ -407,12 +408,12 @@ class Datablock:
         self.prev = prevous_stage
         self.log_context = log_context
 
-    def prepare(self, src: m.Datablock) -> m.Datablock:
+    def prepare(self, src: m.Stage) -> m.Stage:
         """
         Prepare dynamic variables in the block.
 
         Args:
-            src (m.Datablock): Current block.
+            src (m.Stage): Current block.
 
         Returns:
             m.Datablock: Block with variables evaluated.
@@ -426,7 +427,7 @@ class Datablock:
             src.connection = self.render(src.connection)
         return src
 
-    def render(self, templ: t.Union[str, m.BaseModel]) -> str:
+    def render(self, templ: t.Union[str, BaseModel]) -> str:
         """
         Evaluates a template string using context and API.
 
@@ -443,7 +444,7 @@ class Datablock:
         """
         try:
             cls = None
-            if isinstance(templ, m.BaseModel):
+            if isinstance(templ, BaseModel):
                 cls = type(templ)
                 templ = templ.model_dump()  # type: ignore[assignment]
             out = self.renderer.render(templ)  # type: ignore[assignment]
@@ -470,7 +471,7 @@ class Datablock:
         await handler._init_connection()
         return await handler.execute()
 
-    async def show_schema(self) -> t.Optional[m.SchemaItem]:
+    async def show_schema(self) -> t.Optional[m.core.SchemaItem]:
         self.defs = self.prepare(self.defs)
         if bool(self.defs.skip_if):
             self.log.info(f"Skip '{self.defs.name}' (schema mode)")
@@ -541,9 +542,7 @@ class AsyncFlow:
         """Returns the logger."""
         if self.logger:
             return self.logger
-        log_inst = logging.getLogger()
-        log_inst.addHandler(logging.NullHandler())
-        return log_inst
+        return null_logger()
 
     async def connect(self) -> None:
         """
@@ -575,7 +574,7 @@ class AsyncFlow:
                     self.log.setLevel(step.log_level.value)
                 log_ctx = f"[{self.log_context}]" if self.log_context else ""
                 self.log.info(f"{step.kind} '{step.name}' {log_ctx}")
-                stage = Datablock(
+                stage = StageBlock(
                     self.idb,  # type: ignore[assignment]
                     step,
                     self.ctx,
@@ -616,17 +615,17 @@ class AsyncFlow:
         coro = await self.idb.sql(f'SELECT * FROM "{self.lastname}"')
         return await coro.df()
 
-    async def show_schema(self) -> t.List[m.SchemaItem]:
+    async def show_schema(self) -> t.List[m.core.SchemaItem]:
         """
         Returns schemas for all supported stages.
 
         Returns:
-            t.List[m.SchemaItem]: List of schema items.
+            t.List[m.models.SchemaItem]: List of schema items.
         """
-        items: t.List[m.SchemaItem] = []
+        items: t.List[m.core.SchemaItem] = []
         for step in self.defs:
             try:
-                db = Datablock(
+                db = StageBlock(
                     self.idb,
                     step,
                     self.ctx,
@@ -640,7 +639,7 @@ class AsyncFlow:
                     continue
                 elif isinstance(st, list):
                     items.extend(st)
-                elif isinstance(st, m.SchemaItem):
+                elif isinstance(st, m.core.SchemaItem):
                     items.append(st)
                 else:
                     self.log.warning("Unexpected schema item type")
@@ -726,7 +725,7 @@ class Flow:
         """Returns dataframe from the last stage"""
         return asyncio_run(self.flow.df())
 
-    def show_schema(self) -> t.List[m.SchemaItem]:
+    def show_schema(self) -> t.List[m.core.SchemaItem]:
         """
         Returns schemas of all supported stages
         """

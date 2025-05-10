@@ -7,8 +7,11 @@ import io
 from pathlib import Path
 import shutil
 
+from .. import models as m
+from ..models import configs as cfg
+
 from .support import rest_server as srv
-from .. import core, models as m
+from .. import core
 from ..common.util import console_logger
 
 # Constants
@@ -78,16 +81,16 @@ class IntegrationTestFlow(unittest.TestCase):
             "s3_bucket": os.getenv("ITEST_S3_BUCKET"),
             "s3_region": os.getenv("ITEST_S3_REGION")
         })
-        cls.conn_config = m.ConnectionConfiguration(
-            local=m.BucketConfig(bucket=ROOT),
-            s3=m.S3Config(
+        cls.conn_config = cfg.ConnectionConfiguration(
+            local=cfg.BucketConfig(bucket=ROOT),
+            s3=cfg.S3Config(
                 bucket=os.getenv("ITEST_S3_BUCKET"),
                 region=os.getenv("ITEST_S3_REGION"),
                 access_key_id=os.getenv("ITEST_S3_KEY"),
                 secret_access_key=os.getenv("ITEST_S3_SECRET")
             )
         )
-        m.Datablock.model_rebuild()
+        m.Stage.model_rebuild()
         cls.defs = m.Stages.model_validate(yaml_defs)
 
         # Run pipeline and capture logs

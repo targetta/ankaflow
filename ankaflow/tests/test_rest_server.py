@@ -5,24 +5,26 @@ import logging
 
 from ..connections.rest.server import (
     RestClient,
-    m,
     common,
     RestResponse,
     HeaderAuth,
     Oauth2Auth,
 )
+from ..models import rest as rst
+from ..models import enums
+from ..common.types import StringDict
 
 
 # Helper to create a dummy request with the required attributes.
 def create_dummy_request(
-    method=m.RequestMethod.GET,
-    content_type=m.ContentType.JSON,
+    method=enums.RequestMethod.GET,
+    content_type=enums.ContentType.JSON,
     query=None,
     body=None,
     endpoint="/",
     errorhandler=None,
 ):
-    req = MagicMock(spec=m.Request)
+    req = MagicMock(spec=rst.Request)
     req.method = method
     req.content_type = content_type
     req.query = query if query is not None else {}
@@ -41,7 +43,7 @@ def create_dummy_request(
 
 class TestRestClient(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.mock_config = MagicMock(spec=m.RestClientConfig)
+        self.mock_config = MagicMock(spec=rst.RestClientConfig)
         self.mock_config.base_url = "http://test.com"
         self.mock_config.timeout = 10
         # Set auth attribute to avoid AttributeError in connect/disconnect.
@@ -77,41 +79,43 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(auth)
 
     def test_get_auth_basic(self):
-        self.mock_config.auth = m.RestAuth(
-            method=m.AuthType.BASIC,
-            values=m.StringDict({"username": "test", "password": "password"}),
+        self.mock_config.auth = rst.RestAuth(
+            method=enums.AuthType.BASIC,
+            values=StringDict({"username": "test", "password": "password"}),
         )
         auth = self.rest_client.get_auth()
         self.assertIsInstance(auth, httpx.BasicAuth)
 
     def test_get_auth_digest(self):
-        self.mock_config.auth = m.RestAuth(
-            method=m.AuthType.DIGEST,
-            values=m.StringDict({"username": "test", "password": "password"}),
+        self.mock_config.auth = rst.RestAuth(
+            method=enums.AuthType.DIGEST,
+            values=StringDict({"username": "test", "password": "password"}),
         )
         auth = self.rest_client.get_auth()
         self.assertIsInstance(auth, httpx.DigestAuth)
 
     def test_get_auth_header(self):
-        self.mock_config.auth = m.RestAuth(
-            method=m.AuthType.HEADER,
-            values=m.StringDict({"Authorization": "Bearer token"}),
+        self.mock_config.auth = rst.RestAuth(
+            method=enums.AuthType.HEADER,
+            values=StringDict({"Authorization": "Bearer token"}),
         )
         auth = self.rest_client.get_auth()
         self.assertIsInstance(auth, HeaderAuth)
 
     def test_get_auth_oauth2(self):
-        self.mock_config.auth = m.RestAuth(
-            method=m.AuthType.OAUTH2, values=m.StringDict({"token": "token"})
+        self.mock_config.auth = rst.RestAuth(
+            method=enums.AuthType.OAUTH2, values=StringDict({"token": "token"})
         )
         auth = self.rest_client.get_auth()
         self.assertIsInstance(auth, Oauth2Auth)
 
     def test_headers(self):
-        req = create_dummy_request(content_type=m.ContentType.JSON)
+        req = create_dummy_request(content_type=enums.ContentType.JSON)
         self.rest_client.request = req
         headers = self.rest_client.headers()
-        self.assertEqual(headers, {"content-type": m.ContentType.JSON.value})
+        self.assertEqual(
+            headers, {"content-type": enums.ContentType.JSON.value}
+        )
 
     def test_params(self):
         req = create_dummy_request(query={"key": "value"})
@@ -127,9 +131,9 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
 
     def test_arguments_get(self):
         req = create_dummy_request(
-            method=m.RequestMethod.GET,
+            method=enums.RequestMethod.GET,
             query={"key": "value"},
-            content_type=m.ContentType.JSON,
+            content_type=enums.ContentType.JSON,
         )
         self.rest_client.request = req
         args = self.rest_client.arguments()
@@ -137,15 +141,15 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
             args,
             {
                 "params": {"key": "value"},
-                "headers": {"content-type": m.ContentType.JSON.value},
+                "headers": {"content-type": enums.ContentType.JSON.value},
             },
         )
 
     def test_arguments_get_with_content_type(self):
         req = create_dummy_request(
-            method=m.RequestMethod.GET,
+            method=enums.RequestMethod.GET,
             query={"key": "value"},
-            content_type=m.ContentType.JSON,
+            content_type=enums.ContentType.JSON,
         )
         self.rest_client.request = req
         args = self.rest_client.arguments()
@@ -153,14 +157,14 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
             args,
             {
                 "params": {"key": "value"},
-                "headers": {"content-type": m.ContentType.JSON.value},
+                "headers": {"content-type": enums.ContentType.JSON.value},
             },
         )
 
     def test_arguments_post_form(self):
         req = create_dummy_request(
-            method=m.RequestMethod.POST,
-            content_type=m.ContentType.FORM,
+            method=enums.RequestMethod.POST,
+            content_type=enums.ContentType.FORM,
             body={"data": "test"},
             query={},
         )
@@ -170,15 +174,15 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
             args,
             {
                 "params": {},
-                "headers": {"content-type": m.ContentType.FORM.value},
+                "headers": {"content-type": enums.ContentType.FORM.value},
                 "data": {"data": "test"},
             },
         )
 
     def test_arguments_post_json(self):
         req = create_dummy_request(
-            method=m.RequestMethod.POST,
-            content_type=m.ContentType.JSON,
+            method=enums.RequestMethod.POST,
+            content_type=enums.ContentType.JSON,
             body={"data": "test"},
             query={},
         )
@@ -188,7 +192,7 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
             args,
             {
                 "params": {},
-                "headers": {"content-type": m.ContentType.JSON.value},
+                "headers": {"content-type": enums.ContentType.JSON.value},
                 "json": {"data": "test"},
             },
         )
@@ -258,7 +262,7 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
 
     async def test_handle_response_error_condition(self):
         # Setup an errorhandler in the request.
-        error_handler = m.RestErrorHandler(
+        error_handler = rst.RestErrorHandler(
             condition="status == 'error'", message="message"
         )
         req = create_dummy_request(

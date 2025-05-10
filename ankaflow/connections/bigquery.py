@@ -14,6 +14,7 @@ from pandas import DataFrame
 from .connection import Connection
 from . import errors as e
 from .. import models as m
+from ..models.connections import BigQueryConnection
 from ..internal import CatalogException
 from ..common.util import print_df
 
@@ -31,6 +32,7 @@ class BigQuery(Connection):
 
     def init(self):
         """Initializes internal configs and client."""
+        self.conn = t.cast(BigQueryConnection, self.conn)
         self.queryconfig = QueryJobConfig()
         self.loadconfig = LoadJobConfig()
         self._client = None
@@ -50,7 +52,9 @@ class BigQuery(Connection):
         )
 
         schema_update = (
-            [SchemaUpdateOption.ALLOW_FIELD_ADDITION] if schema_mode == "merge" else []
+            [SchemaUpdateOption.ALLOW_FIELD_ADDITION]
+            if schema_mode == "merge"
+            else []
         )
 
         self.loadconfig.write_disposition = write_disposition
@@ -102,7 +106,9 @@ class BigQuery(Connection):
         )
 
         schema_update = (
-            [SchemaUpdateOption.ALLOW_FIELD_ADDITION] if schema_mode == "merge" else []
+            [SchemaUpdateOption.ALLOW_FIELD_ADDITION]
+            if schema_mode == "merge"
+            else []
         )
 
         config = LoadJobConfig(write_disposition=write_disposition)
@@ -125,12 +131,16 @@ class BigQuery(Connection):
         )
 
         schema_update = (
-            [SchemaUpdateOption.ALLOW_FIELD_ADDITION] if schema_mode == "merge" else []
+            [SchemaUpdateOption.ALLOW_FIELD_ADDITION]
+            if schema_mode == "merge"
+            else []
         )
 
         return schema_update, write_disposition  # type: ignore  # Pylance freaks our becasue if str != literal
 
-    def locate(self, name: t.Optional[str] = None, use_wildcard: bool = False) -> str:
+    def locate(
+        self, name: t.Optional[str] = None, use_wildcard: bool = False
+    ) -> str:
         """Returns the fully qualified BigQuery table name using dot notation."""
         name = name or self.conn.locator
 
@@ -171,7 +181,9 @@ class BigQuery(Connection):
         except Exception as ex:
             raise Exception((f"BigQuery query failed:\n{query}\nError: {ex}"))
 
-    async def _register_dataframe_to_duckdb(self, df: DataFrame, temp_name: str):
+    async def _register_dataframe_to_duckdb(
+        self, df: DataFrame, temp_name: str
+    ):
         """Registers a DataFrame as a DuckDB temp table."""
         try:
             await self.c.register(temp_name, df)
@@ -183,7 +195,9 @@ class BigQuery(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
         """Executes a BigQuery query and loads result into DuckDB."""
         if not query:
-            raise ValueError("BigQuery requires an explicit query — none was provided.")
+            raise ValueError(
+                "BigQuery requires an explicit query — none was provided."
+            )
 
         # TODO: may cause issues when running paraller
         temp_name = "bigdf"
@@ -325,7 +339,7 @@ class BigQuery(Connection):
         except Exception as e:
             raise Exception(f"Failed to create dataset `{dataset_id}`: {e}")
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         """Infers runtime schema from BigQuery data (via DuckDB) and returns as Fields."""  # noqa:E501
         try:
             return await self.schema_.show(self.name)
@@ -389,6 +403,8 @@ class BigQuery(Connection):
                     "Insert includes columns not present in table, but schema_mode is not 'merge'."  # noqa:E501
                 )
 
-            return e.UnrecoverableSinkError(f"BigQuery conflict not resolved: {msg}")
+            return e.UnrecoverableSinkError(
+                f"BigQuery conflict not resolved: {msg}"
+            )
 
         return e.UnrecoverableSinkError(f"Unhandled BigQuery sink error: {msg}")

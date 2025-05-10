@@ -7,11 +7,13 @@ from tempfile import gettempdir
 from pathlib import Path
 import jmespath
 import sys
-from ... import models as m
+
+from ...models.connections import RestConnection
+from ...models import rest as rst
+from ...models import enums
 from .common import MaterializerProtocol, Materializer, MaterializeError
 from ..connection import Connection
 from ...common.util import print_error
-from ...internal import DDB
 
 IS_PYODIDE = sys.platform == "emscripten"
 
@@ -27,7 +29,7 @@ log = logging.getLogger(__name__)
 
 
 class ResponseHandler:
-    def __init__(self, request: m.Request, id: str):
+    def __init__(self, request: rst.Request, id: str):
         self.id = id
         self.req = request
         self.res = request.response
@@ -37,7 +39,7 @@ class ResponseHandler:
         pass
 
     async def read_response(self, resp: RestResponse):
-        if self.res.content_type == m.DataType.JSON:
+        if self.res.content_type == enums.DataType.JSON:
             data = await resp.json()
             if self.res.locator:
                 return jmespath.search(self.res.locator, data)
@@ -47,12 +49,12 @@ class ResponseHandler:
 class PaginationHandler(ResponseHandler):
     class Page:
         # Output structure including page data and next page request
-        def __init__(self, data: t.List[t.Any], next_request: m.Request):
+        def __init__(self, data: t.List[t.Any], next_request: rst.Request):
             self.data = data
             self.next_request = next_request
 
     def _setup(self):
-        if self.res.handler.param_locator == m.ParameterDisposition.QUERY:
+        if self.res.handler.param_locator == enums.ParameterDisposition.QUERY:
             self.current_page = self.req.query[self.res.handler.page_param]
         else:
             self.current_page = self.req.body[self.res.handler.page_param]
@@ -82,7 +84,7 @@ class PaginationHandler(ResponseHandler):
             return True
 
     async def read_response(self):  # type: ignore
-        if self.res.content_type == m.DataType.JSON:
+        if self.res.content_type == enums.DataType.JSON:
             self._data = await self.resp.json()
             if self.res.locator:
                 self._records = jmespath.search(self.res.locator, self._data)  # noqa:E501
@@ -100,7 +102,7 @@ class PaginationHandler(ResponseHandler):
         self.current_page = int(self.current_page) + int(
             self.res.handler.increment
         )  #  noqa:E501
-        if self.res.handler.param_locator == m.ParameterDisposition.QUERY:
+        if self.res.handler.param_locator == enums.ParameterDisposition.QUERY:
             next_req.query[self.res.handler.page_param] = self.current_page
         else:
             next_req.body[self.res.handler.page_param] = self.current_page
@@ -159,7 +161,7 @@ class StatePollingHandler(ResponseHandler):
 class RestApi:
     def __init__(
         self,
-        client: m.RestClientConfig,
+        client: rst.RestClientConfig,
         materializer: MaterializerProtocol,
         logger: logging.Logger = None,
     ):
@@ -202,7 +204,7 @@ class RestApi:
             data = await ResponseHandler(self.req, self.id).read_response(resp)
             await self.mat.materialize(data)
             return
-        if self.res.handler.kind == m.ResponseHandlerTypes.STATEPOLLING:
+        if self.res.handler.kind == rst.ResponseHandlerTypes.STATEPOLLING:
             poller = StatePollingHandler(self.req, self.id)
             while True:
                 data_status = await poller.poll(resp)
@@ -212,7 +214,7 @@ class RestApi:
                 self.log.debug(self.req)
                 resp = await self._client.fetch(self.req)
         # URL Polling
-        elif self.res.handler.kind == m.ResponseHandlerTypes.URLPOLLING:
+        elif self.res.handler.kind == rst.ResponseHandlerTypes.URLPOLLING:
             poller = URLPollingHandler(self.req, self.id)
             while True:
                 url_status = await poller.poll(resp)
@@ -230,7 +232,7 @@ class RestApi:
                 path = poller.tmppath
             await self.mat.materialize(None, filename=path)
         # Paginator
-        elif self.res.handler.kind == m.ResponseHandlerTypes.PAGINATOR:
+        elif self.res.handler.kind == rst.ResponseHandlerTypes.PAGINATOR:
             paginator = PaginationHandler(self.req, self.id)
             while True:
                 page = await paginator.next(resp)
@@ -249,7 +251,7 @@ class RestApi:
             data = await ResponseHandler(self.req, self.id).read_response(resp)
             await self.mat.materialize(data)
 
-    async def fetch(self, request: m.Request):
+    async def fetch(self, request: rst.Request):
         self.req = request
         self.res = request.response
         self.create_client()
@@ -264,26 +266,18 @@ class RestApi:
 
 
 class Rest(Connection):
-    def __init__(
-        self,
-        duck: DDB,
-        name: str,
-        connection: m.Rest,
-        context,
-        variables,
-        logger: logging.Logger = None,
-    ):
-        super().__init__(duck, name, connection, context, variables, logger)
+    def init(self):
+        self.conn = t.cast(RestConnection, self.conn)
         mat = Materializer(
-            duck,
-            connection.request.response.content_type,
-            name,
+            self.c,
+            self.conn.request.response.content_type,
+            self.name,
             self.schema_,
-            connection.fields,
+            self.conn.fields,
         )
-        self.api = RestApi(connection.client, mat, logger=logger)
-        self.request = connection.request
-        self.log = logger
+        self.api = RestApi(self.conn.client, mat, logger=self.log)
+        self.request = self.conn.request
+        self.log = self.log
 
     def parse_config(self, config: dict):
         pass

@@ -9,7 +9,9 @@ import pyarrow as pa
 from deltalake import DeltaTable
 
 from ..connections.delta import Deltatable, SinkStrategy
-from .. import models as m
+from ..models import core as m
+from ..models.components import Column, Columns
+from ..models.configs import ConnectionConfiguration, BucketConfig
 from ..connections.connection import Schema
 from ..internal.server import DDB
 
@@ -23,8 +25,11 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         )
         self.arrow_table = pa.Table.from_pandas(self.df)
 
-        self.mock_conn = m.Connection(
-            kind="deltatable", locator=self.path, config=m.ConnectionConfiguration()
+# Argument missing for parameter "create_statement"Pylance
+        self.mock_conn = m.DeltatableConnection(
+            kind="Deltatable",
+            locator=self.path,
+            config=ConnectionConfiguration()
         )
 
         self.instance = Deltatable.__new__(Deltatable)
@@ -36,7 +41,7 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.instance.log = MagicMock()
         self.instance.locate = lambda use_wildcard=False: self.path  # type: ignore
         self.instance.c = AsyncMock()
-        duck = DDB(m.ConnectionConfiguration(bucket="*"))
+        duck = DDB(ConnectionConfiguration(local=BucketConfig(bucket="*")))
         self.instance.schema_ = Schema(duck=duck)  # type: ignore # noqa: E501
 
     def tearDown(self):
@@ -53,10 +58,10 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.assertIn("CREATE TABLE", sql)
 
     async def test_create_strategy_all_cases(self):
-        self.instance.conn.fields = m.Fields(
+        self.instance.conn.fields = Columns(
             [
-                m.Field(name="id", type="BIGINT"),
-                m.Field(name="amount", type="DOUBLE"),
+                Column(name="id", type="BIGINT"),
+                Column(name="amount", type="DOUBLE"),
             ]
         )
         empty_df = pd.DataFrame()
@@ -85,11 +90,11 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_deltatable_and_show_schema(self):
         # Define fields that simulate what would come from upstream schema inference
-        self.instance.conn.fields = m.Fields(
+        self.instance.conn.fields = Columns(
             [
-                m.Field(name="id", type="BIGINT"),
-                m.Field(name="amount", type="DOUBLE"),
-                m.Field(name="name", type="VARCHAR"),
+                Column(name="id", type="BIGINT"),
+                Column(name="amount", type="DOUBLE"),
+                Column(name="name", type="VARCHAR"),
             ]
         )
 

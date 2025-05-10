@@ -262,7 +262,7 @@ class Clickhouse(c.Connection):
             self.progress.log(0)
 
     @with_clickhouse
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         try:
             return await self.schema_.show(self.name)
         except CatalogException:

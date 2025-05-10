@@ -6,12 +6,11 @@ from clickhouse_driver.errors import Error as CHError
 # Makse sure to keep imports
 from ..connections import clickhouse as ch
 from ..connections import errors as e
-from ..models import (
-    ConnectionConfiguration,
-    Connection,
+from ..models.connections import ClickhouseConnection
+from ..models.configs import ConnectionConfiguration, ClickhouseConfig
+from ..models.core import (
     FlowContext,
     Variables,
-    ClickhouseConfig,
 )
 from ..internal.duckdb import DDB
 
@@ -58,7 +57,7 @@ class TestClickhouse(unittest.IsolatedAsyncioTestCase):
                 blocksize=2,
             )
         )
-        self.connection = MagicMock(spec=Connection)
+        self.connection = MagicMock(spec=ClickhouseConnection)
         self.connection.locator = "my_table"
         self.connection.fields = []
         self.connection.config = self.cfg
@@ -101,9 +100,7 @@ class TestClickhouse(unittest.IsolatedAsyncioTestCase):
         result = self.ck._build_query_with_ranking("SELECT * FROM x")
         self.assertEqual(result, "SELECT * FROM x WHERE y")
 
-    @patch(
-        f"{__name__}.ch.ClickhouseClient.stream_query"
-    )
+    @patch(f"{__name__}.ch.ClickhouseClient.stream_query")
     @patch(
         f"{__name__}.ch.Clickhouse._create_or_insert_df",
         new_callable=AsyncMock,

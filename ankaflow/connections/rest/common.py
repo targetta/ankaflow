@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from ... import models as m
+from ...models import enums as enums
 from ..connection import Schema
 from ... import internal
 
@@ -31,8 +32,7 @@ class RestRetryableError(Exception):
 
 
 class MaterializerProtocol(t.Protocol):
-    async def materialize(self, data: t.Union[str, dict, list]) -> t.Any:
-        ...
+    async def materialize(self, data: t.Union[str, dict, list]) -> t.Any: ...
 
 
 class Materializer:
@@ -45,10 +45,10 @@ class Materializer:
     def __init__(
         self,
         connection: internal.DDB,
-        dtype: m.DataType,
+        dtype: enums.DataType,
         table: str,
         schema: Schema,
-        columns: t.List[m.Field] = None,
+        columns: t.List[m.Column] = None,
         logger: logging.Logger = None,
     ):
         self.dtype = dtype
@@ -78,7 +78,9 @@ class Materializer:
             self.log.error(f"Failed to create table: {e}")
             raise MaterializeError(f"Failed to create table: {e}")
 
-    async def materialize(self, data: t.Union[list, str, dict], filename: str = None):
+    async def materialize(
+        self, data: t.Union[list, str, dict], filename: str = None
+    ):
         """
         Insert data into DuckDB table from supplied structure or file name.
         """
@@ -105,7 +107,9 @@ class Materializer:
             elif isinstance(data, str):
                 string = data
             else:
-                raise ValueError("Cannot infer type: can be JSON string, list, or dict")  # noqa:E501
+                raise ValueError(
+                    "Cannot infer type: can be JSON string, list, or dict"
+                )  # noqa:E501
             return StringIO(string)
         elif filename:
             try:
@@ -122,12 +126,14 @@ class Materializer:
         """
         read_opts = {"columns": self.cols_to_map()} if self.fields else {}
         try:
-            if self.dtype in [m.DataType.JSONL, m.DataType.JSON]:
+            if self.dtype in [enums.DataType.JSONL, enums.DataType.JSON]:
                 await self.connection.read_json(buffer, self.table, read_opts)
-            elif self.dtype == m.DataType.CSV:
+            elif self.dtype == enums.DataType.CSV:
                 await self.connection.read_csv(buffer, self.table, read_opts)
-            elif self.dtype == m.DataType.PARQUET:
-                await self.connection.read_parquet(buffer, self.table, read_opts)
+            elif self.dtype == enums.DataType.PARQUET:
+                await self.connection.read_parquet(
+                    buffer, self.table, read_opts
+                )
             else:
                 raise MaterializeError(f"Unsupported data type: {self.dtype}")
         except MaterializeError:

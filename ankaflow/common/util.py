@@ -213,7 +213,7 @@ def print_df(df: pd.DataFrame, all_rows: bool = False):
     return out
 
 
-def print_fields(fields: t.Union[m.Fields, t.List[m.Field]]):
+def print_fields(fields: t.Union[m.Columns, t.List[m.Column]]):
     out = []
     for field in fields:
         out.append(f"- {field.name}")
@@ -332,7 +332,7 @@ def duckdb_to_pyarrow_type(duckdb_type: str):
 
 
 def pandas_to_pyarrow(
-    df: pd.DataFrame, schema: t.Union[m.Fields, t.List[m.Field]]
+    df: pd.DataFrame, schema: t.Union[m.Columns, t.List[m.Column]]
 ) -> pa.Table:
     """
     Convert a Pandas DataFrame to a PyArrow Table with a specific schema.

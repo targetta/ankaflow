@@ -2,6 +2,8 @@ import typing as t
 from sqlglot import parse_one
 import pandas as pd
 import logging
+import json
+from io import StringIO
 from pathlib import Path
 
 from .connection import Connection
@@ -9,6 +11,21 @@ from .. import models as m
 from ..internal import CatalogException
 
 log = logging.getLogger(__name__)
+
+
+class Variable(Connection):
+    async def tap(self, query: t.Optional[str] = None, limit: int = 0):
+        try:
+            var = self.vars[self.conn.locator]
+        except KeyError:
+            var = None
+        var_str = json.dumps(var)
+        await self.c.read_json(StringIO(var_str), self.name, {})
+
+    async def sink(self, from_name: str):
+        rel = await self.c.sql(f'SELECT * FROM "{from_name}"')
+        df = await rel.df()
+        self.vars[self.conn.locator] = df.to_dict(orient="records")
 
 
 class Parquet(Connection):
@@ -38,7 +55,7 @@ class Parquet(Connection):
         """
         await self.c.sql(stmt)
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         table_name = f"schema_{self.name}"
         try:
             return await self.schema_.show(self.name)
@@ -76,7 +93,7 @@ class JSON(Connection):
         """
         await self.c.sql(stmt)
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         try:
             return await self.schema_.show(self.name)
         except CatalogException:
@@ -111,7 +128,7 @@ class CSV(Connection):
         """
         await self.c.sql(stmt)
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         try:
             return await self.schema_.show(self.name)
         except CatalogException:
@@ -173,7 +190,7 @@ class File(Connection):
             except Exception as e:
                 log.warning(e)
 
-    async def show_schema(self) -> m.Fields:
+    async def show_schema(self) -> m.Columns:
         try:
             return await self.schema_.show(self.name)
         except CatalogException:

@@ -6,7 +6,7 @@ from io import StringIO, FileIO
 import sys
 from duckdb import DuckDBPyRelation  # noqa:E501
 
-from ..models import ConnectionConfiguration
+from ..models.configs import ConnectionConfiguration
 
 IS_PYODIDE = sys.platform == "emscripten"
 

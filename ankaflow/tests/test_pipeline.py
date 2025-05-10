@@ -178,7 +178,7 @@ class Datablock:
         return self.defs.name
 
     async def do(self):
-        stages = Stages.parse_obj(self.defs.stages or [])
+        stages = Stages.model_validate(self.defs.stages or [])
         for step in stages.steps():
             sub = Datablock(
                 conn=self.idb,

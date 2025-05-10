@@ -5,7 +5,7 @@ import typing as t
 import logging
 import random
 
-from ..models import ConnectionConfiguration
+from ..models.configs import ConnectionConfiguration
 from .macros import Fn
 from . import errors as err
 

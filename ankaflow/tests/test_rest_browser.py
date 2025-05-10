@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from ..connections.rest import browser as br
 from .. import models as m
+from ..models import rest as rst
+from ..models import enums
 from ..connections.rest import common
 
 # Create mock for pyodide.http.pyfetch
@@ -53,17 +55,17 @@ class MockJSResponse:
 
 class TestRestClient(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.mock_request = MagicMock(spec=m.Request)
+        self.mock_request = MagicMock(spec=rst.Request)
         self.mock_request.endpoint = "test"
         self.mock_request.query = {}
         self.mock_request.body = {"key": "val"}
-        self.mock_request.method = m.RequestMethod.POST
-        self.mock_request.content_type = m.ContentType.JSON
+        self.mock_request.method = enums.RequestMethod.POST
+        self.mock_request.content_type = enums.ContentType.JSON
         self.mock_request.errorhandler = MagicMock()
         self.mock_request.errorhandler.condition = None
         self.mock_request.errorhandler.error_status_codes = []
 
-        self.mock_client = MagicMock(spec=m.RestClientConfig)
+        self.mock_client = MagicMock(spec=rst.RestClientConfig)
         self.mock_client.base_url = "https://example.com"
         self.mock_client.auth = None
         self.client = br.RestClient(self.mock_client)

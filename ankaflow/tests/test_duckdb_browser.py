@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from ..internal import browser as ddb
 from ..common.path import RemotePath, PathFactory, HTTPPath
-from ..models import ConnectionConfiguration, S3Config
+from ..models.configs import ConnectionConfiguration, S3Config
 
 # Create mock for pyodide.http.pyfetch
 mock_pyodide_http = types.ModuleType("pyodide.http")

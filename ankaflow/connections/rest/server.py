@@ -9,7 +9,10 @@ from pathlib import Path
 
 
 from . import common
-from ... import models as m
+
+# from ...models import models as m
+from ...models import rest as rst
+from ...models import enums
 from ...common.util import print_error
 
 log = logging.getLogger(__name__)
@@ -50,12 +53,14 @@ class RestClient:
     A REST client for making HTTP requests with retry and error handling.
     """
 
-    def __init__(self, clientconfig: m.RestClientConfig, logger: logging.Logger = None):
-        self.config: m.RestClientConfig = clientconfig
+    def __init__(
+        self, clientconfig: rst.RestClientConfig, logger: logging.Logger = None
+    ):
+        self.config: rst.RestClientConfig = clientconfig
         self.base_url: str = clientconfig.base_url
         self._auth: httpx.Auth = None
         self.client: httpx.Client = None
-        self.request: m.Request = None
+        self.request: rst.Request = None
         self.wait = 1  # Initial wait for replayable errors
         self.retry = 3  # Retry on 500+ errors
         self.log = logger or logging.getLogger(__name__)
@@ -73,7 +78,9 @@ class RestClient:
 
     def connect(self) -> "RestClient":
         """Connect to the REST client."""
-        self.client = httpx.Client(auth=self.auth(), timeout=self.config.timeout)
+        self.client = httpx.Client(
+            auth=self.auth(), timeout=self.config.timeout
+        )
         return self
 
     def disconnect(self):
@@ -93,12 +100,14 @@ class RestClient:
             return None
         vars = self.config.auth.values or {}
         auth_methods = {
-            m.AuthType.BASIC: httpx.BasicAuth,
-            m.AuthType.DIGEST: httpx.DigestAuth,
-            m.AuthType.HEADER: HeaderAuth,
-            m.AuthType.OAUTH2: Oauth2Auth,
+            enums.AuthType.BASIC: httpx.BasicAuth,
+            enums.AuthType.DIGEST: httpx.DigestAuth,
+            enums.AuthType.HEADER: HeaderAuth,
+            enums.AuthType.OAUTH2: Oauth2Auth,
         }
-        return auth_methods.get(self.config.auth.method, lambda **_: None)(**vars)
+        return auth_methods.get(self.config.auth.method, lambda **_: None)(
+            **vars
+        )
 
     @property
     def closed(self):
@@ -136,10 +145,10 @@ class RestClient:
     def arguments(self):
         """Prepare the arguments for the HTTP request."""
         args = {"params": self.params(), "headers": self.headers()}
-        if self.request.method != m.RequestMethod.GET:
-            if self.request.content_type == m.ContentType.FORM:
+        if self.request.method != enums.RequestMethod.GET:
+            if self.request.content_type == enums.ContentType.FORM:
                 args["data"] = self.payload()
-            elif self.request.content_type == m.ContentType.JSON:
+            elif self.request.content_type == enums.ContentType.JSON:
                 args["json"] = self.payload()
         return args
 
@@ -150,7 +159,9 @@ class RestClient:
         response_body = getattr(response, "text", None)
 
         if response.status_code == 429:
-            self.log.debug(print_error(f"Request limit reached, waiting {self.wait}"))
+            self.log.debug(
+                print_error(f"Request limit reached, waiting {self.wait}")
+            )
             retried_response = await self._retry_request()
             return retried_response.resp  # unwrapped
         elif response.status_code >= 500:
@@ -158,9 +169,13 @@ class RestClient:
                 response, url, request_body, response_body
             )
         elif response.status_code >= 400:
-            self._handle_client_error(response, url, request_body, response_body)
+            self._handle_client_error(
+                response, url, request_body, response_body
+            )
         elif self.request.errorhandler.condition:
-            self._handle_custom_error(response, url, request_body, response_body)
+            self._handle_custom_error(
+                response, url, request_body, response_body
+            )
         return response
 
     async def _retry_request(self):
@@ -177,7 +192,10 @@ class RestClient:
         if not self.retry:
             self.log.warning(
                 print_error(
-                    f"Error {response.status_code}", url, response_body, request_body
+                    f"Error {response.status_code}",
+                    url,
+                    response_body,
+                    request_body,
                 )
             )
             raise common.RestRequestError(
@@ -193,7 +211,10 @@ class RestClient:
         """Handle client errors (400+)."""
         self.log.warning(
             print_error(
-                f"Error {response.status_code}", url, response_body, request_body
+                f"Error {response.status_code}",
+                url,
+                response_body,
+                request_body,
             )
         )
         raise common.RestRequestError(
@@ -204,17 +225,22 @@ class RestClient:
         """Handle custom errors defined in the request error handler."""
         resp = response.json()
         if jmespath.search(self.request.errorhandler.condition, resp):
-            msg = jmespath.search(self.request.errorhandler.message, resp) or resp
+            msg = (
+                jmespath.search(self.request.errorhandler.message, resp) or resp
+            )
             self.log.warning(
                 print_error(
-                    f"Error {response.status_code}", url, response_body, request_body
+                    f"Error {response.status_code}",
+                    url,
+                    response_body,
+                    request_body,
                 )
             )
             raise common.RestRequestError(
                 print_error(f"Error in {url}", msg, request_body)
             )
 
-    async def fetch(self, request: m.Request) -> RestResponse:
+    async def fetch(self, request: rst.Request) -> RestResponse:
         """Fetch data from the REST API."""
         self.request = request
         args = self.arguments()
@@ -225,10 +251,14 @@ class RestClient:
             return RestResponse(response)
         except httpx.TransportError as e:
             self.log.warning(
-                print_error(f"HTTP Transport error {e}", self.url, self.request.query)
+                print_error(
+                    f"HTTP Transport error {e}", self.url, self.request.query
+                )
             )
             raise common.RestRequestError(
-                print_error(f"HTTP Transport error {e}", self.url, self.request.query)
+                print_error(
+                    f"HTTP Transport error {e}", self.url, self.request.query
+                )
             )
         finally:
             self.request = None
@@ -237,7 +267,9 @@ class RestClient:
         """Stream data from the REST API to a file."""
         with self.client.stream("GET", url) as response:
             if response.status_code >= 400:
-                raise common.RestRequestError(print_error(f"Read failed for {url}"))
+                raise common.RestRequestError(
+                    print_error(f"Read failed for {url}")
+                )
             with open(destination, "w", encoding="utf8") as file:
                 for chunk in response.iter_text():
                     file.write(chunk)

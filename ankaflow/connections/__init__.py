@@ -6,7 +6,7 @@ from .connection import Connection
 
 # Builtin connection imports
 from .rest.rest import Rest as Rest
-from .connection import Variable as Variable
+from .file import Variable as Variable
 from .file import Parquet, CSV, JSON, File  # noqa: F401
 
 from .. import models as m
@@ -33,7 +33,9 @@ class NoConnectionError(Exception):
 
 
 def load_connection(
-    cls: t.Type[t.Union[m.Connection, m.Rest, m.CustomConnection, m.Dimension]],
+    cls: t.Type[
+        t.Union[m.Connection, m.RestConnection, m.CustomConnection, m.Dimension]
+    ],
 ) -> t.Type[Connection]:
     """
     Load built-in connection or custom connection from module
@@ -49,10 +51,14 @@ def load_connection(
         if callable(mth):
             loaded = cls.load()  # type: ignore
             if not issubclass(loaded, Connection):
-                raise TypeError(f"{cls.__name__} is not a subclass of Connection")
+                raise TypeError(
+                    f"{cls.__name__} is not a subclass of Connection"
+                )
             return loaded
 
         return getattr(current_module, cls.kind)
 
     except (ImportError, AttributeError) as e:
-        raise NoConnectionError(f"Connection '{cls.kind}' unavailable: {e}") from e
+        raise NoConnectionError(
+            f"Connection '{cls.kind}' unavailable: {e}"
+        ) from e

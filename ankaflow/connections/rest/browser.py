@@ -6,6 +6,8 @@ from asyncio import sleep
 import logging
 
 from ... import models as m
+from ...models import rest as rst
+from ...models import enums as enums
 from . import common
 from ...common.util import print_error
 
@@ -44,7 +46,11 @@ class RestLikeResponse:
     @property
     def ok(self) -> bool:
         """Returns True if the response status is 2xx."""
-        return self._resp.ok if self._is_js else self._resp.status in range(200, 300)
+        return (
+            self._resp.ok
+            if self._is_js
+            else self._resp.status in range(200, 300)
+        )
 
     @property
     def status(self) -> int:
@@ -74,7 +80,9 @@ class RestLikeResponse:
         return await self._resp.bytes()
 
 
-async def _dispatch_fetch(url: str, args: dict, args_json: str) -> RestLikeResponse:
+async def _dispatch_fetch(
+    url: str, args: dict, args_json: str
+) -> RestLikeResponse:
     """
     Dispatches the fetch call to either JS getHTTPResponse or pyodide pyfetch.
 
@@ -120,7 +128,8 @@ class RestResponse:
 
 class RestClient:
     """
-    HTTP client that works in Pyodide with fallback support for native JS or pyfetch.
+    HTTP client that works in Pyodide with fallback
+    support for native JS or pyfetch.
 
     Args:
         clientconfig: Pydantic client configuration model.
@@ -129,12 +138,12 @@ class RestClient:
 
     def __init__(
         self,
-        clientconfig: m.RestClientConfig,
+        clientconfig: rst.RestClientConfig,
         logger: t.Optional[logging.Logger] = None,
     ) -> None:
-        self.config: m.RestClientConfig = clientconfig
+        self.config: rst.RestClientConfig = clientconfig
         self.base_url: str = clientconfig.base_url
-        self._request: t.Optional[m.Request] = None
+        self._request: t.Optional[rst.Request] = None
         self.wait: int = 1
         self.retry: int = 3
         self.log = logger or logging.getLogger()
@@ -144,14 +153,14 @@ class RestClient:
         self._closed: bool = True
 
     @property
-    def request(self) -> m.Request:
+    def request(self) -> rst.Request:
         """Returns the active request."""
         if self._request is None:
             raise RuntimeError("No active request")
         return self._request
 
     @request.setter
-    def request(self, value: t.Optional[m.Request]) -> None:
+    def request(self, value: t.Optional[rst.Request]) -> None:
         """Sets the active request."""
         self._request = value
 
@@ -173,15 +182,15 @@ class RestClient:
         if not self.config.auth:
             return None
         vars = self.config.auth.values or {}
-        if self.config.auth.method == m.AuthType.BASIC:
+        if self.config.auth.method == enums.AuthType.BASIC:
             self._headers["Authorization"] = (
                 f"Basic {vars['username']}:{vars['password']}"
             )
-        elif self.config.auth.method == m.AuthType.HEADER:
+        elif self.config.auth.method == enums.AuthType.HEADER:
             self._headers.update(vars)
-        elif self.config.auth.method == m.AuthType.OAUTH2:
+        elif self.config.auth.method == enums.AuthType.OAUTH2:
             self._headers["Authorization"] = f"Bearer {vars['token']}"
-        elif self.config.auth.method == m.AuthType.DIGEST:
+        elif self.config.auth.method == enums.AuthType.DIGEST:
             raise NotImplementedError("Digest auth not supported")
 
     def url(self) -> str:
@@ -213,17 +222,21 @@ class RestClient:
             "headers": self.headers(),
             "method": self.request.method.value,
         }
-        if self.request.method != m.RequestMethod.GET:
-            if self.request.content_type == m.ContentType.FORM:
+        if self.request.method != enums.RequestMethod.GET:
+            if self.request.content_type == enums.ContentType.FORM:
                 body = self.payload()
                 args["body"] = (
-                    urllib.parse.urlencode(body) if isinstance(body, dict) else body
+                    urllib.parse.urlencode(body)
+                    if isinstance(body, dict)
+                    else body
                 )
-            elif self.request.content_type == m.ContentType.JSON:
+            elif self.request.content_type == enums.ContentType.JSON:
                 args["body"] = json.dumps(self.payload())
         return args
 
-    async def handle_response(self, response: RestLikeResponse) -> RestLikeResponse:
+    async def handle_response(
+        self, response: RestLikeResponse
+    ) -> RestLikeResponse:
         """
         Validates response status and raises typed errors if needed.
 
@@ -239,20 +252,28 @@ class RestClient:
         url = response.url
         if response.status == 429:
             self.log.warning(f"Rate limited (429) from {url}")
-            raise common.RestRateLimitError(f"Rate limit exceeded: 429 for {url}")
+            raise common.RestRateLimitError(
+                f"Rate limit exceeded: 429 for {url}"
+            )
         elif response.status >= 500:
             text = await response.text()
-            raise common.RestRetryableError(print_error("Server error", url, text))
+            raise common.RestRetryableError(
+                print_error("Server error", url, text)
+            )
         elif response.status >= 400:
             text = await response.text()
-            raise common.RestRequestError(print_error("Client error", url, text))
+            raise common.RestRequestError(
+                print_error("Client error", url, text)
+            )
 
         if self.request.errorhandler.condition:
             try:
                 body = json.loads(await response.json())
             except Exception:
                 raise common.RestRequestError(await response.text())
-            if t.cast(bool, jmespath.search(self.request.errorhandler.condition, body)):
+            if t.cast(
+                bool, jmespath.search(self.request.errorhandler.condition, body)
+            ):
                 raise common.RestRequestError(
                     print_error("Validation failed", url, body)
                 )
@@ -262,7 +283,7 @@ class RestClient:
 
         return response
 
-    async def fetch(self, request: m.Request) -> RestResponse:
+    async def fetch(self, request: rst.Request) -> RestResponse:
         """
         Executes the HTTP request with retry and backoff.
 
@@ -293,7 +314,9 @@ class RestClient:
                 wait *= 2
             except Exception as e:
                 if attempt == max_retries:
-                    raise common.RestRequestError(print_error("Fatal error", url, e))
+                    raise common.RestRequestError(
+                        print_error("Fatal error", url, e)
+                    )
                 await sleep(wait)
                 wait *= 2
 
@@ -318,7 +341,9 @@ class RestClient:
         resp = await _dispatch_fetch(url, args, args_json)
 
         if not resp.ok:
-            raise common.RestRequestError(print_error(f"Download failed: {url}"))
+            raise common.RestRequestError(
+                print_error(f"Download failed: {url}")
+            )
 
         data = await resp.bytes()
         encoding = resp.encoding or "utf-8"
