@@ -1,3 +1,58 @@
+"""
+HTTP Test Server for Pipeline and Proxy Integration Tests.
+
+This module defines a request handler (`RequestHandler`) for use with Python's
+`http.server` to simulate various server-side behaviors during integration tests
+of the DuctFlow data pipeline framework.
+
+Endpoints:
+    - **GET /json**
+        Simulates paginated REST API responses. Reads from a local JSON file
+        (`/tmp/test_parquet_read.json`) and supports optional pagination, error
+        injection, and simulated rate limiting (HTTP 429).
+
+        Query Parameters:
+            - page_no (int): Zero-based page index.
+            - page_size (int): Number of records per page.
+            - error (int): If set, returns an HTTP error with that code.
+            - simulate429 (int): Simulate transient 429 errors for N retries.
+
+    - **POST /proxy**
+        Simulates an LLM proxy backend. Accepts JSON payloads with either:
+            - `prompt` (str): Simple input string.
+            - `messages` (list): OpenAI-style chat messages.
+
+        Behavior:
+            - If prompt is `"mock"`, returns a fixed SQL response.
+            - Otherwise, returns a stub indicating where real backend
+              logic could be integrated.
+
+    - **POST /shutdown**
+        Immediately shuts down the HTTP server (gracefully).
+        Useful for programmatically stopping the server after a test suite.
+
+Usage:
+    This server is typically started in a background thread in test setup using
+    `ThreadingHTTPServer`. Use the `/proxy` endpoint with the `LLMProxy` client
+    configuration in pipeline tests to validate ProxyClient behavior.
+
+    Example:
+        server = ThreadingHTTPServer(("localhost", 8051), RequestHandler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.daemon = True
+        thread.start()
+
+        # ... run tests using /proxy or /json endpoints ...
+
+        requests.post("http://localhost:8051/shutdown")
+
+Notes:
+    - All endpoints return JSON.
+    - Logging is suppressed by default.
+    - Errors and rate limits are intentionally injected for retry logic testing.
+
+"""
+
 import warnings
 import json
 import os
@@ -25,16 +80,17 @@ server: HTTPServer | None = None
 server_thread: threading.Thread | None = None
 
 class RequestHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for JSON API and shutdown."""
+    """HTTP request handler for JSON API, proxy mock, and shutdown."""
 
     def do_GET(self) -> None:
-        """Handle GET requests to /json."""
         parsed = urlparse(self.path)
         if parsed.path != "/json":
             self.send_error(404, "Not Found")
             return
+
         query = parse_qs(parsed.query)
         log.debug(f"HTTP Query: {query}")
+
         def get_int(param: str) -> int | None:
             values = query.get(param)
             if values:
@@ -51,9 +107,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         client_id = f"{page_no}-{page_size}-{simulate429}"
         if simulate429 is not None:
-            if error_counters[client_id] < simulate429:
-                error_counters[client_id] += 1
-                log.debug("Simulated 429 attempt %d/%d", error_counters[client_id], simulate429)  # noqa: E501
+            if error_counters.get(client_id, 0) < simulate429:
+                error_counters[client_id] = error_counters.get(client_id, 0) + 1
+                log.debug("Simulated 429 attempt %d/%d", error_counters[client_id], simulate429)
                 self.send_error(429, "Simulated 429 - rate limit")
                 return
             else:
@@ -82,12 +138,67 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         """Handle POST requests to /shutdown."""
         parsed = urlparse(self.path)
-        if parsed.path != "/shutdown":
-            self.send_error(404, "Not Found")
+
+        if parsed.path == "/shutdown":
+            self.send_response(200)
+            self.end_headers()
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
             return
-        self.send_response(200)
-        self.end_headers()
-        threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+        if parsed.path == "/sqlgen":
+            self._handle_proxy_post()
+            return
+
+        self.send_error(404, "Not Found")
+
+    def _handle_proxy_post(self) -> None:
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            payload = json.loads(body)
+
+            # Handle prompt: prompt-based or messages-style
+            prompt = payload.get("prompt") or self._extract_prompt(payload)
+            extras = payload.get("extras", {})
+
+            if prompt == "mock":
+                response = self._mock_llm_response(prompt, extras)
+            else:
+                response = self._stub_real_response(prompt, extras)
+
+            self._send_json(response)
+
+        except Exception as e:
+            self._send_json({"error": str(e)}, status=500)
+
+    def _extract_prompt(self, payload: dict) -> str:
+        messages = payload.get("messages", [])
+        if messages:
+            return messages[0].get("content", "mock")
+        return "mock"
+
+    def _mock_llm_response(self, prompt: str, extras: dict) -> dict:
+        return {
+            "query": "SELECT 1 AS mock;",
+            "message": f"Mocked response to prompt: {prompt}",
+        }
+
+    def _stub_real_response(self, prompt: str, extras: dict) -> dict:
+        # Future real proxying logic here
+        payload = {
+                "query": f'SELECT 42 AS "{prompt}"',
+                "message": "Stubbed real backend handler"
+            }
+
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(payload)
+                    }
+                }
+            ]
+        }
 
     def log_message(self, format: str, *args: object) -> None:
         """Suppress default logging."""

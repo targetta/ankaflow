@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field as PydanticField
 from .configs import ConnectionConfiguration
 from .components import Columns
 from .rest import Request, RestClientConfig
+from . import llm
 
 
 class VersionedConnection(BaseModel):
@@ -296,4 +297,43 @@ class RestConnection(EphemeralConnection):
     """
     If True, the connector will attempt to infer
     or display the response schema automatically.
+    """
+
+
+class SQLGenConnection(EphemeralConnection):
+    """SQLGen connection is intended for SQL code generation:
+    
+    Prompt should instruct the model to generate SQL query and
+    and executes resutling a VIEW in the internal database.
+
+    Example:
+        
+        Stage 1: Name: ReadSomeParquetData
+
+        Stage 2: Name: CodeGen, query: Given SQL table `ReadSomeParquetData` generate SQL query to
+            count number of rows in the table.
+        
+        Inside stage 2 the following happens:
+        
+        1. Prompt is sent to inferecne endpoint
+        
+        2. Endpoint is expected to respond with valid SQL
+        
+        3. Connection will execute a statement `CREATE OR REPLACE VIEW StageName AS <received_select_statement>`
+            where statement in the exmaple is likely `SELECT COUNT() FROM ReadSomeParquetData`
+    
+    ."""  # noqa:E501
+    kind: t.Literal["SQLGen"] # type: ignore
+    """Specifies the `kind==SQLGen`"""
+    variables: dict | None = None
+    """
+    Variables passed to Prompt. Prompt must be supplied in the
+    `query` field of the `Stage`.
+
+    Prompt may contain Jinja2-style placeholders:
+
+    Example:
+        `Here's my name: {{name}}.`
+    
+        The connection will render the prompt template using `variables`
     """

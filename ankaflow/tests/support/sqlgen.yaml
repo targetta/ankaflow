@@ -1,0 +1,21 @@
+- name: TestSQLGenProxy
+  kind: tap
+  connection:
+    kind: SQLGen
+    config:
+      llm:
+        kind: openai
+        proxy:
+          client:
+            base_url: http://localhost:8051
+            content_type: application/json
+          request:
+            endpoint: /sqlgen
+            method: post
+            response:
+              content_type: application/json
+              kind: Basic
+              locator: ''
+    variables: null
+  query: prompt and not mock
+  show: 5

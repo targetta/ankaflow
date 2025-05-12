@@ -23,7 +23,8 @@ from .connections import (
     DeltatableConnection,
     Dimension,
     CustomConnection,
-    RestConnection
+    RestConnection,
+    SQLGenConnection
 )
 
 
@@ -53,5 +54,6 @@ __all__ = [
     "DeltatableConnection",
     "Dimension",
     "CustomConnection",
-    "RestConnection"
+    "RestConnection",
+    "SQLGenConnection",
 ]

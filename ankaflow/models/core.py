@@ -24,6 +24,7 @@ from .connections import (
     JSONConnection,
     CSVConnection,
     FileConnection,
+    SQLGenConnection,
     Dimension
 )
 
@@ -171,6 +172,7 @@ class Stage(BaseModel):
             JSONConnection,
             CSVConnection,
             FileConnection,
+            SQLGenConnection,
             Dimension,
         ]
     ] = Field(None, discriminator="kind")

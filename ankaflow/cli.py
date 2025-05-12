@@ -15,6 +15,7 @@ from ankaflow import (  # type: ignore
     Flow,
     Variables,
 )
+import ankaflow
 
 
 def resolve_yaml_path(path_arg: str) -> Path:
@@ -94,6 +95,11 @@ def main():
     )
     parser.add_argument("-l", "--log", help="Path to log file")
     parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging (sets log level to DEBUG)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         nargs=2,
@@ -104,6 +110,9 @@ def main():
     args = parser.parse_args()
 
     # --- Logger setup ---
+    # formatter = logging.Formatter(
+    #     "%(asctime)s %(levelname)s [%(module)s:%(lineno)d]: %(message)s", "%Y-%m-%d %H:%M:%S"
+    # )
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
     )
@@ -115,7 +124,7 @@ def main():
     cli_log.addHandler(cli_handler)
 
     ankalog = logging.getLogger("ankalogger")
-    ankalog.setLevel(logging.INFO)
+    ankalog.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     if args.log:
         file_handler = logging.FileHandler(args.log)
@@ -139,21 +148,25 @@ def main():
     context = FlowContext(contextdict)
     variables = parse_keyval(args.variable)
     config = resolve_config()
-
+    vars = Variables(variables)
     # --- Run pipeline ---
     duct = Flow(
         stages,
         context,
         config,
-        variables=Variables(variables),
+        variables= vars,
         logger=ankalog,
     )
-    duct.run()
-
+    try:
+        duct.run()
+    except Exception as e:
+        ankalog.info(e)
+    finally:
+        ankalog.debug(vars)
     # --- Output final dataframe if requested ---
     if args.output:
         fmt, path = args.output
-        df = duct.pull_df()
+        df = duct.df()
         if df is None:
             cli_log.error("No dataframe returned. Cannot write output.")
             sys.exit(1)

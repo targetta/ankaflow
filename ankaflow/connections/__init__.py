@@ -6,8 +6,14 @@ from .connection import Connection
 
 # Builtin connection imports
 from .rest.rest import Rest as Rest
-from .file import Variable as Variable
-from .file import Parquet, CSV, JSON, File  # noqa: F401
+from .llm.sqlgen import SQLGen as SQLGen
+from .file import (
+    Parquet as Parquet,
+    CSV as CSV,
+    JSON as JSON,
+    File as File,
+    Variable as Variable,
+)
 
 from .. import models as m
 

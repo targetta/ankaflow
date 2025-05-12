@@ -26,6 +26,7 @@ nav:
       - Browser setup: browser-readme.md
       - Custom connection: custom-connection.md
       - Using with Motherduck: motherduck.md
+      - Using LLM for SQL generation: llm-readme.md
   - API:
       - Pipeline API: api/ankaflow.models.md
       - Duct API: api/ankaflow.md
@@ -53,7 +54,7 @@ plugins:
             show_bases: true
             show_labels: false
             members: true
-            show_source: false
+            show_source: true
             docstring_section_style: table
             modernize_annotations: true
             filters:

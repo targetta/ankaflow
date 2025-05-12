@@ -446,7 +446,7 @@ class StageBlock:
             cls = None
             if isinstance(templ, BaseModel):
                 cls = type(templ)
-                templ = templ.model_dump()  # type: ignore[assignment]
+                templ = templ.model_dump(mode="json")  # type: ignore[assignment]
             out = self.renderer.render(templ)  # type: ignore[assignment]
             if cls is not None:
                 out = cls.model_validate(out)

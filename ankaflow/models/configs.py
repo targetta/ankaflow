@@ -1,6 +1,8 @@
 import typing as t
 from pydantic import BaseModel, Field as PydanticField
 
+from .llm import LLMConfig
+
 class BucketConfig(BaseModel):
     bucket: t.Optional[str] = None
     """
@@ -194,5 +196,9 @@ class ConnectionConfiguration(BaseModel):
     clickhouse: ClickhouseConfig = PydanticField(
         default_factory=ClickhouseConfig
     )
-    """ClickHouse database configuration."""
+    """Language model configuration."""
+    llm: LLMConfig = PydanticField(
+        default_factory=LLMConfig
+    )
+    """Language model configuration."""
 
