@@ -15,7 +15,6 @@ from ankaflow import (  # type: ignore
     Flow,
     Variables,
 )
-import ankaflow
 
 
 def resolve_yaml_path(path_arg: str) -> Path:
@@ -110,9 +109,6 @@ def main():
     args = parser.parse_args()
 
     # --- Logger setup ---
-    # formatter = logging.Formatter(
-    #     "%(asctime)s %(levelname)s [%(module)s:%(lineno)d]: %(message)s", "%Y-%m-%d %H:%M:%S"
-    # )
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
     )

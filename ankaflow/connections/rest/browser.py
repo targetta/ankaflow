@@ -5,7 +5,6 @@ import urllib.parse
 from asyncio import sleep
 import logging
 
-from ... import models as m
 from ...models import rest as rst
 from ...models import enums as enums
 from . import common

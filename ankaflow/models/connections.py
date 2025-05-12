@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field as PydanticField
 from .configs import ConnectionConfiguration
 from .components import Columns
 from .rest import Request, RestClientConfig
-from . import llm
 
 
 class VersionedConnection(BaseModel):

@@ -6,7 +6,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from ..connections.rest import browser as br
-from .. import models as m
 from ..models import rest as rst
 from ..models import enums
 from ..connections.rest import common

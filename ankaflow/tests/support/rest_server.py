@@ -79,6 +79,7 @@ error_counters: defaultdict[str, int] = defaultdict(int)
 server: HTTPServer | None = None
 server_thread: threading.Thread | None = None
 
+
 class RequestHandler(BaseHTTPRequestHandler):
     """HTTP request handler for JSON API, proxy mock, and shutdown."""
 
@@ -109,11 +110,17 @@ class RequestHandler(BaseHTTPRequestHandler):
         if simulate429 is not None:
             if error_counters.get(client_id, 0) < simulate429:
                 error_counters[client_id] = error_counters.get(client_id, 0) + 1
-                log.debug("Simulated 429 attempt %d/%d", error_counters[client_id], simulate429)
+                log.debug(
+                    "Simulated 429 attempt %d/%d",
+                    error_counters[client_id],
+                    simulate429,
+                )
                 self.send_error(429, "Simulated 429 - rate limit")
                 return
             else:
-                response = [{"retry429": f"success after {simulate429} retries"}]
+                response = [
+                    {"retry429": f"success after {simulate429} retries"}
+                ]
                 log.debug(response)
                 self._send_json(response)
                 return
@@ -186,19 +193,11 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _stub_real_response(self, prompt: str, extras: dict) -> dict:
         # Future real proxying logic here
         payload = {
-                "query": f'SELECT 42 AS "{prompt}"',
-                "message": "Stubbed real backend handler"
-            }
-
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "content": json.dumps(payload)
-                    }
-                }
-            ]
+            "query": f'SELECT 42 AS "{prompt}"',
+            "message": "Stubbed real backend handler",
         }
+
+        return {"choices": [{"message": {"content": json.dumps(payload)}}]}
 
     def log_message(self, format: str, *args: object) -> None:
         """Suppress default logging."""

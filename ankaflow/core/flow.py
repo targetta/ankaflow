@@ -16,7 +16,13 @@ from .. import errors as e
 from ..api import API
 from ..internal import DDB
 from .. import connections as c
-from ..common.util import print_df, print_error, asyncio_run, string_to_bool, null_logger
+from ..common.util import (
+    print_df,
+    print_error,
+    asyncio_run,
+    string_to_bool,
+    null_logger,
+)
 from ..common.renderer import Renderer
 
 log = logging.getLogger(__name__)
@@ -77,7 +83,9 @@ class BaseStageHandler:
         conn_model = self.defs.connection
 
         if self.require_connection and not conn_model:
-            raise e.FlowError(f"Stage '{self.defs.name}' requires a connection.")
+            raise e.FlowError(
+                f"Stage '{self.defs.name}' requires a connection."
+            )
 
         if not conn_model:
             self._connection = None
@@ -177,7 +185,9 @@ class PipelineStageHandler(BaseStageHandler):
 
     # TODO: pull schema from flow
     async def show_schema(self) -> t.Optional[m.core.SchemaItem]:
-        self.log.warning(f"Pipeline stage '{self.block.defs.name}' has no schema")
+        self.log.warning(
+            f"Pipeline stage '{self.block.defs.name}' has no schema"
+        )
         return None
 
 
@@ -280,7 +290,9 @@ class SinkStageHandler(BaseStageHandler):
             await conn.sink(self.block.prev)
         if src.show:
             self.log.info(
-                dd(f"{src.connection.kind} > {src.name}:\n{src.connection.locator}")
+                dd(
+                    f"{src.connection.kind} > {src.name}:\n{src.connection.locator}"
+                )
             )
         return None
 
@@ -589,10 +601,14 @@ class AsyncFlow:
                 msg = dd(f"{ex.__class__.__name__} in {step.name}: {ex}")
                 if step.on_error == FlowControl.ON_ERROR_FAIL:
                     if self.flow_control.on_error == FlowControl.ON_ERROR_FAIL:
-                        self.log.error(f"Pipeline failed at '{step.name}':\n{dd(msg)}")
+                        self.log.error(
+                            f"Pipeline failed at '{step.name}':\n{dd(msg)}"
+                        )
                         end = arrow.get()
                         self.log.info(f"Run duration: {end - start}")
-                        raise e.FlowRunError(f"Failed at '{step.name}':\n{dd(msg)}")
+                        raise e.FlowRunError(
+                            f"Failed at '{step.name}':\n{dd(msg)}"
+                        )
                 else:
                     self.log.warning(f"Failed '{step.name}':\n{dd(msg)}")
             if step.throttle and step.throttle > 0:

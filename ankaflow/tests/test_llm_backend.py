@@ -1,4 +1,3 @@
-from logging import config
 import unittest
 import asyncio
 import json
@@ -19,7 +18,6 @@ from ..connections.llm.protocols import (  # replace with actual path
 
 from ..connections.llm.sqlgen import make_client, make_protocol
 
-from .. import models as m
 from ..models import enums
 from ..models import rest
 from ..models import llm
