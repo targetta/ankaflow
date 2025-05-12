@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://example.com/docs/browser-readme/">
+        <link rel="canonical" href="https://example.com/docs/llm-readme/">
       
       
-        <link rel="prev" href="../getting-started/">
+        <link rel="prev" href="../motherduck/">
       
       
-        <link rel="next" href="../custom-connection/">
+        <link rel="next" href="../api/ankaflow.models/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Browser setup - AnkaFlow Documentation</title>
+        <title>Using LLM for SQL generation - AnkaFlow Documentation</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ankaflow-in-the-browser-pyodide" class="md-skip">
+        <a href="#leveraging-llms-in-data-pipelines-with-ankaflow" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Browser setup
+              Using LLM for SQL generation
             
           </span>
         </div>
@@ -311,32 +311,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Browser setup
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../browser-readme/" class="md-nav__link">
         
   
   
@@ -347,89 +325,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#demo-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      🚀 Demo Options
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      📦 How It Works
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-jupyterlite-or-pyodide" class="md-nav__link">
-    <span class="md-ellipsis">
-      🧰 Example (JupyterLite or Pyodide)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      🧠 Notes
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#for-developers" class="md-nav__link">
-    <span class="md-ellipsis">
-      🛠 For Developers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#browser-specific-modules" class="md-nav__link">
-    <span class="md-ellipsis">
-      📁 Browser-Specific Modules
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#works-great-in" class="md-nav__link">
-    <span class="md-ellipsis">
-      ✅ Works Great In
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -485,10 +380,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../llm-readme/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Using LLM for SQL generation
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -499,6 +416,149 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-are-we-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧠 What Are We Building?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-structure-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧱 Pipeline Structure Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#llm-integration-step-by-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧩 LLM Integration: Step-by-Step
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧩 LLM Integration: Step-by-Step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-load-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Load Your Data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-discover-schema-dynamically" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Discover Schema Dynamically
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-save-schema-as-a-variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Save Schema as a Variable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-prompt-template-header-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Prompt Template (Header Block)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-generate-sql-via-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Generate SQL via LLM
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔄 Design Considerations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Use Cases
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generalization-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      🛠 Generalization Tips
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Running the Pipeline
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      📌 Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -651,63 +711,123 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#demo-options" class="md-nav__link">
+  <a href="#what-are-we-building" class="md-nav__link">
     <span class="md-ellipsis">
-      🚀 Demo Options
+      🧠 What Are We Building?
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#pipeline-structure-overview" class="md-nav__link">
     <span class="md-ellipsis">
-      📦 How It Works
+      🧱 Pipeline Structure Overview
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-jupyterlite-or-pyodide" class="md-nav__link">
+  <a href="#llm-integration-step-by-step" class="md-nav__link">
     <span class="md-ellipsis">
-      🧰 Example (JupyterLite or Pyodide)
+      🧩 LLM Integration: Step-by-Step
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🧩 LLM Integration: Step-by-Step">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-load-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Load Your Data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-discover-schema-dynamically" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Discover Schema Dynamically
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-save-schema-as-a-variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Save Schema as a Variable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-prompt-template-header-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Prompt Template (Header Block)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-generate-sql-via-llm" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Generate SQL via LLM
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔄 Design Considerations
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
+  <a href="#use-cases" class="md-nav__link">
     <span class="md-ellipsis">
-      🧠 Notes
+      🔧 Use Cases
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#for-developers" class="md-nav__link">
+  <a href="#generalization-tips" class="md-nav__link">
     <span class="md-ellipsis">
-      🛠 For Developers
+      🛠 Generalization Tips
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#browser-specific-modules" class="md-nav__link">
+  <a href="#running-the-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      📁 Browser-Specific Modules
+      🚀 Running the Pipeline
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#works-great-in" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
-      ✅ Works Great In
+      📌 Summary
     </span>
   </a>
   
@@ -729,101 +849,133 @@
 
 
 
-<h1 id="ankaflow-in-the-browser-pyodide">🧪 AnkaFlow in the Browser (Pyodide)<a class="headerlink" href="#ankaflow-in-the-browser-pyodide" title="Permanent link">&para;</a></h1>
-<p>This guide shows how to run <strong>AnkaFlow pipelines fully in-browser</strong>, using Pyodide (Python in WebAssembly).<br />
-No server, no install — pipelines run client-side using the same YAML-based definitions.</p>
+<h1 id="leveraging-llms-in-data-pipelines-with-ankaflow">Leveraging LLMs in Data Pipelines with AnkaFlow<a class="headerlink" href="#leveraging-llms-in-data-pipelines-with-ankaflow" title="Permanent link">&para;</a></h1>
+<p>AnkaFlow allows you to integrate powerful language models like OpenAI's GPT into a SQL-based ETL workflow — not for generating text, but for generating <em>structured SQL queries</em> dynamically from user questions. This turns natural language into executable logic as part of a data pipeline. Here's how to structure such a pipeline, what the components do, and how to generalize it to your own use case.</p>
 <hr />
-<h2 id="demo-options">🚀 Demo Options<a class="headerlink" href="#demo-options" title="Permanent link">&para;</a></h2>
+<h2 id="what-are-we-building">🧠 What Are We Building?<a class="headerlink" href="#what-are-we-building" title="Permanent link">&para;</a></h2>
+<p>A pipeline that:
+1. Loads structured data (e.g., Parquet files).
+2. Extracts schema information.
+3. Sends metadata + user question to an LLM (e.g., GPT).
+4. Receives a SQL query as output.
+5. Executes the query and optionally returns results.</p>
+<hr />
+<h2 id="pipeline-structure-overview">🧱 Pipeline Structure Overview<a class="headerlink" href="#pipeline-structure-overview" title="Permanent link">&para;</a></h2>
+<p>AnkaFlow pipelines are defined in YAML and executed via an in-memory DuckDB engine. A pipeline consists of:</p>
+<ul>
+<li><strong><code>source</code></strong> steps to load structured data or call external services (like an LLM) and generate queries</li>
+<li><strong><code>transform</code></strong> steps to apply logic</li>
+<li><strong><code>sink</code></strong> steps to persist results or make them available for later reuse</li>
+</ul>
+<hr />
+<h2 id="llm-integration-step-by-step">🧩 LLM Integration: Step-by-Step<a class="headerlink" href="#llm-integration-step-by-step" title="Permanent link">&para;</a></h2>
+<h3 id="1-load-your-data">1. Load Your Data<a class="headerlink" href="#1-load-your-data" title="Permanent link">&para;</a></h3>
+<p>Use <code>source</code> steps to ingest data from Parquet, SQL, or REST APIs:</p>
+<pre><code class="language-yaml">- name: LoadSales
+  kind: source
+  connection:
+    kind: Parquet
+    locator: data/sales_data*.parquet
+</code></pre>
+<h3 id="2-discover-schema-dynamically">2. Discover Schema Dynamically<a class="headerlink" href="#2-discover-schema-dynamically" title="Permanent link">&para;</a></h3>
+<p>Use a SQL query to inspect the tables you've loaded:</p>
+<pre><code class="language-yaml">- name: Describe
+  kind: self
+  query: &gt;
+    SELECT table_name, column_name, data_type
+    FROM information_schema.columns
+    WHERE table_schema = 'main'
+</code></pre>
+<h3 id="3-save-schema-as-a-variable">3. Save Schema as a Variable<a class="headerlink" href="#3-save-schema-as-a-variable" title="Permanent link">&para;</a></h3>
+<p>Store the schema result for reuse in the LLM call:</p>
+<pre><code class="language-yaml">- name: SetSchema
+  kind: sink
+  connection:
+    kind: Variable
+    locator: DiscoveredSchema
+</code></pre>
+<h3 id="4-prompt-template-header-block">4. Prompt Template (Header Block)<a class="headerlink" href="#4-prompt-template-header-block" title="Permanent link">&para;</a></h3>
+<p>Define a reusable LLM prompt using Jinja2 templating:</p>
+<pre><code class="language-yaml">- name: Header
+  kind: header
+  prompt: &amp;Prompt |
+    You are a SQL query generator.
+    Schema: {{ schema_json }}
+    {% if relations_json %}Relations: {{ relations_json }}{% endif %}
+    Question: {{ user_prompt }}
+</code></pre>
+<h3 id="5-generate-sql-via-llm">5. Generate SQL via LLM<a class="headerlink" href="#5-generate-sql-via-llm" title="Permanent link">&para;</a></h3>
+<p>Use a <code>tap</code> step with an LLM backend:</p>
+<pre><code class="language-yaml">- name: GenerateSQL
+  kind: tap
+  connection:
+    kind: SQLGen
+    config:
+      kind: openai
+    variables:
+    schema_json: &lt;&lt;API.look('DiscoveredSchema', variables) | tojson&gt;&gt;
+    user_prompt: &lt;&lt;API.look('UserPrompt', variables)&gt;&gt;
+  query: *Prompt
+</code></pre>
+<p>Here, the LLM is used to translate a natural language prompt into executable SQL using the live schema as context. The generated query will be injected to the pipeline generating new output.</p>
+<p>The output can be examined by setting <code>show: 1</code>.</p>
+<hr />
+<h2 id="design-considerations">🔄 Design Considerations<a class="headerlink" href="#design-considerations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Idempotent Execution</strong>: Each step is deterministic. Even LLM steps are cacheable and inspectable.</li>
+<li><strong>Traceability</strong>: LLM input and output are transparent; prompt + schema + response are all visible.</li>
+<li><strong>Declarative Logic</strong>: SQL output is injected back into the pipeline like any other transform.</li>
+<li><strong>Custom Connectors</strong>: Can integrate other backends besides OpenAI (e.g., local models or proxies).</li>
+</ul>
+<hr />
+<h2 id="use-cases">🔧 Use Cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Ad Hoc Analytics</strong>: Analysts can phrase questions in plain language.</li>
+<li><strong>Self-Service Dashboards</strong>: Business users ask "How many orders were delayed last month?" and get results.</li>
+<li><strong>Semantic SQL Layer</strong>: Front-end apps dynamically generate SQL from user queries without manual query writing.</li>
+</ul>
+<hr />
+<h2 id="generalization-tips">🛠 Generalization Tips<a class="headerlink" href="#generalization-tips" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Template your LLM prompts. Store them under <code>- kind: header</code> and inject metadata via <code>variables</code>.</li>
+<li>Always pass schema as JSON — ideally normalized via an inspection query.</li>
+<li>Store LLM results in <code>Variable</code> sinks to reuse, log, or audit them.</li>
+<li>Use environment-specific <code>backend</code> config for OpenAI, local, or proxy usage.</li>
+</ul>
+<hr />
+<h2 id="running-the-pipeline">🚀 Running the Pipeline<a class="headerlink" href="#running-the-pipeline" title="Permanent link">&para;</a></h2>
+<p>Once defined, pipelines can be run locally:</p>
+<pre><code class="language-bash">ankaflow pipeline.yaml
+</code></pre>
+<p>Or embedded into browser apps via Pyodide.</p>
+<hr />
+<h2 id="summary">📌 Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Method</th>
-<th>Link</th>
+<th>Feature</th>
+<th>Benefit</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>🧪 JupyterLite Notebook</td>
-<td><a href="#">Launch Demo Notebook</a></td>
+<td>Schema-aware prompts</td>
+<td>More accurate SQL generation</td>
 </tr>
 <tr>
-<td>🌐 HTML SPA Demo</td>
-<td><a href="#">Try YAML Upload Demo</a></td>
+<td>Variable injection</td>
+<td>Reuse outputs across steps</td>
+</tr>
+<tr>
+<td>YAML-first architecture</td>
+<td>Version-controlled, auditable flow</td>
+</tr>
+<tr>
+<td>OpenAI backend (or other)</td>
+<td>Plug in any LLM provider</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="how-it-works">📦 How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<ul>
-<li>AnkaFlow is compatible with Pyodide (via <code>micropip</code>)</li>
-<li>Remote files (e.g., S3, GCS) are fetched using <code>pyodide.http.pyfetch</code> or custom implementation (e.g. <code>axios</code>)</li>
-<li>The SQL engine is DuckDB (running in WASM)</li>
-<li>Everything is local to your browser</li>
-</ul>
-<hr />
-<h2 id="example-jupyterlite-or-pyodide">🧰 Example (JupyterLite or Pyodide)<a class="headerlink" href="#example-jupyterlite-or-pyodide" title="Permanent link">&para;</a></h2>
-<pre><code class="language-python">import micropip
-await micropip.install(&quot;ankaflow&quot;)
-
-from ankaflow import Flow
-yaml = '''
-- name: Load
-  kind: source
-  connection:
-    kind: Parquet
-    locator: data.parquet
-
-- name: View
-  kind: transform
-  query: select * from Load
-'''
-
-Flow().run(yaml)
-</code></pre>
-<hr />
-<h2 id="notes">🧠 Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Only packages available in the Pyodide index can be used</li>
-<li>Some connectors (e.g., BigQuery, ClickHouse) are not available in the browser</li>
-<li>All pipelines must avoid server-only dependencies when targeting Pyodide</li>
-</ul>
-<hr />
-<h2 id="for-developers">🛠 For Developers<a class="headerlink" href="#for-developers" title="Permanent link">&para;</a></h2>
-<p>If you're embedding AnkaFlow in a browser app:</p>
-<ol>
-<li>Load Pyodide:</li>
-</ol>
-<pre><code class="language-html">&lt;script src=&quot;https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js&quot;&gt;&lt;/script&gt;
-</code></pre>
-<ol>
-<li>Bootstrap and run:</li>
-</ol>
-<pre><code class="language-js">const pyodide = await loadPyodide();
-await pyodide.loadPackage([&quot;micropip&quot;]);
-await pyodide.runPythonAsync(`
-    import micropip
-    await micropip.install(&quot;ankaflow&quot;)
-    from ankaflow import Flow
-    Flow().run(...)
-`);
-</code></pre>
-<hr />
-<h2 id="browser-specific-modules">📁 Browser-Specific Modules<a class="headerlink" href="#browser-specific-modules" title="Permanent link">&para;</a></h2>
-<p>The following modules help with Pyodide execution:</p>
-<ul>
-<li><code>connections/rest/browser.py</code>: Fetches data via <code>pyfetch</code></li>
-<li><code>LocalFileSystem</code>: Writes to Pyodide's <code>/tmp</code></li>
-<li><code>ObjectDownloader</code>: Manages cloud-to-browser downloads</li>
-</ul>
-<hr />
-<h2 id="works-great-in">✅ Works Great In<a class="headerlink" href="#works-great-in" title="Permanent link">&para;</a></h2>
-<ul>
-<li>[x] Chrome</li>
-<li>[x] Firefox</li>
-<li>[x] JupyterLite</li>
-<li>[x] VS Code WebView</li>
-<li>[x] GitHub Pages</li>
-</ul>
 
 
 
