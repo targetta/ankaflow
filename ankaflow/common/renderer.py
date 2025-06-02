@@ -13,7 +13,10 @@ class Renderer:
         self.kwargs = kwargs
 
     def render_string(
-        self, string: str, squash_whitespace: bool = False, infer_type: bool = True
+        self,
+        string: str,
+        squash_whitespace: bool = False,
+        infer_type: bool = True,
     ) -> t.Any:
         if not isinstance(string, str):
             return string
@@ -90,4 +93,6 @@ class Renderer:
             return input
 
         except Exception as e:
-            raise ValueError(print_error(f"Cannot render {type(input)}:", str(e)))
+            raise ValueError(
+                print_error(f"Cannot render {type(input)}:", str(e))
+            )
