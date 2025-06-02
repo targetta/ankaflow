@@ -12,14 +12,18 @@ class UserGeneratedError(Exception):
 class API:
     # Need to cast numpy types to python types
     # numpy types are not supported in jinja templates?
+    @staticmethod
     def int(input: t.Any):
         return int(input)
 
+    @staticmethod
     def dt(
-        datelike: t.Union[str, int, float, date, datetime, arrow.Arrow] = None,
-        tz: str = None,
-        format: str = None,
-        default: str = None,
+        datelike: t.Union[
+            str, "int", float, date, datetime, arrow.Arrow, None
+        ] = None,
+        tz: str | None = None,
+        format: str | None = None,
+        default: str | None = None,
     ):
         """
         Attempts to convert input object into Arrow.
@@ -39,7 +43,7 @@ class API:
         # Handle various return types:
         # nan - when table exists but not data
         # nanosecond timestamp in bigquery
-        if pd.isna(datelike):
+        if pd.isna(datelike):  # type: ignore
             datelike = default
         if isinstance(datelike, (int)):
             if datelike > 9999999999:
@@ -48,7 +52,7 @@ class API:
             if datelike is None:
                 a = arrow.get()
             elif format:
-                a = arrow.get(datelike, format)
+                a = arrow.get(datelike, format)  # type: ignore
             else:
                 a = arrow.get(datelike)
         except Exception:
@@ -60,7 +64,10 @@ class API:
             return a.replace(tzinfo=tz)
         return a
 
-    def look(lookup: str, data: t.Any, default: t.Any = None) -> t.Union[str, None]:
+    @staticmethod
+    def look(
+        lookup: str, data: t.Any, default: t.Any = None
+    ) -> t.Union[str, None]:
         """
         Extracts value from given structure, or default value
         if requested value not found.
@@ -79,6 +86,7 @@ class API:
             return default
         return found
 
+    @staticmethod
     def peek(value: t.Any) -> str:
         """
         Returns information about value type:
@@ -96,6 +104,7 @@ class API:
         n = value.__class__.__name__
         return f"{m}.{n}"
 
+    @staticmethod
     def sqltuple(iterable: t.Iterable, mode: str = "string"):
         """
         Returns SQL tuple literal from given iterable.
@@ -120,6 +129,7 @@ class API:
         else:
             raise NotImplementedError(f"Invalid mode: {mode}")
 
+    @staticmethod
     def setvariable(collection: dict, key: str, value: t.Any) -> t.Any:
         """
         Attempts to assign value to a dictionary under the given key.
@@ -135,6 +145,7 @@ class API:
         collection[key] = value
         return value
 
+    @staticmethod
     def error(expression: t.Any, message: str) -> t.Any:
         """
         Raises an exception if input expression evaluates

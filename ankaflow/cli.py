@@ -58,8 +58,8 @@ def resolve_config() -> ConnectionConfiguration:
 def main():
     parser = argparse.ArgumentParser(
         description="Run a Ankaflow pipeline.\n\n"
-        "S3, GS storage, and BigQuery connections can be automatically configured\n"
-        "via environment variables. For Google Cloud Storage HMAC keys are required.\n"
+        "S3, GS storage, and BigQuery connections can be automatically configured\n"  # noqa: E501
+        "via environment variables. For Google Cloud Storage HMAC keys are required.\n"  # noqa: E501
         "See more: https://cloud.google.com/storage/docs/authentication/hmackeys\n"
         "\n"
         "Supported environment variables:\n"
@@ -84,13 +84,13 @@ def main():
     )
     parser.add_argument(
         "yaml_path",
-        help="Path to the pipeline YAML definition. Type DEMO to run demo flow.",
+        help="Path to the pipeline YAML definition. Type DEMO to run demo flow.",  # noqa: E501
     )  # noqa: E501
     parser.add_argument(
         "-c", "--context", action="append", default=[], help="Context key=value"
     )
     parser.add_argument(
-        "-v", "--variable", action="append", default=[], help="Variable key=value"
+        "-v", "--variable", action="append", default=[], help="Variable key=value"  # noqa: E501
     )
     parser.add_argument("-l", "--log", help="Path to log file")
     parser.add_argument(
@@ -156,7 +156,7 @@ def main():
     try:
         duct.run()
     except Exception as e:
-        ankalog.info(e)
+        ankalog.error(e)
     finally:
         ankalog.debug(vars)
     # --- Output final dataframe if requested ---
