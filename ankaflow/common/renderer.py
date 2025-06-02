@@ -33,11 +33,8 @@ class Renderer:
         jenv.filters["int"] = lambda v: int(v)
         jenv.filters["float"] = lambda v: float(v)
 
-        # Add global variables for rendering
-        # jenv.globals.update(self.kwargs)
-
-        tmpl = jenv.from_string(string, globals=self.kwargs)
-        rendered = tmpl.render().strip()
+        tmpl = jenv.from_string(string)
+        rendered = tmpl.render(**self.kwargs).strip()
 
         if squash_whitespace:
             rendered = " ".join(rendered.split())
