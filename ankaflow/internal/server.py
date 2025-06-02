@@ -81,8 +81,11 @@ class DDB:
 
     async def _attach_motherduck(self):
         if "motherduck_token" in os.environ:
-            self.c.execute("ATTACH md:")
-            log.info("Motheduck attached")
+            try:
+                self.c.execute("ATTACH 'md:'")
+                log.info("Motherduck attached")
+            except Exception as e:
+                log.error(f"Failed loading Motherduck: {e}")
 
     async def _init_secrets(self):
         # TODO: use bucket property from global connection
