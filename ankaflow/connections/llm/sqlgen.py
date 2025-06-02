@@ -138,6 +138,7 @@ class SQLGen(Connection):
         }
         if not self._prompt:
             raise ValueError("Prompt must be set before calling fetch")
+        self.log.info(f"Query was not properly composed:\n{error}\nRetrying...")  # noqa: E501
         raw = await self.client.fetch(self._prompt, extras)
         self.log.debug(f"Raw response:\n{raw}")
         parsed = self.protocol.parse(raw)
