@@ -16,7 +16,7 @@ class CommonPath:
         return any(char in self.path for char in "*?[]")
 
     def is_absolute(self) -> bool:
-        """Returns True if the path is considered absolute (remote or rooted)."""
+        """Returns True if the path is considered absolute (remote or rooted)."""  # noqa: E501
         return self.path.startswith("/") or "://" in self.path
 
     def __str__(self) -> str:
@@ -31,13 +31,13 @@ class CommonPath:
 
         RemotePath subclasses override this. LocalPath may skip or raise.
         """
-        raise NotImplementedError("get_endpoint() must be implemented by remote paths")
+        raise NotImplementedError("get_endpoint() must be implemented by remote paths")  # noqa: E501
 
     def get_local(self, root: str = "/tmp") -> str:
         """
         Returns a local filesystem path that mirrors this remote path.
         """
-        raise NotImplementedError("get_local() must be implemented by remote paths")
+        raise NotImplementedError("get_local() must be implemented by remote paths")  # noqa: E501
 
     @property
     def scheme(self) -> str:
@@ -99,7 +99,7 @@ class CommonPath:
         raise NotImplementedError("parts must be implemented by subclasses")
 
     def joinpath(self, *others: str) -> "CommonPath":
-        raise NotImplementedError("joinpath() must be implemented in subclasses")
+        raise NotImplementedError("joinpath() must be implemented in subclasses")  # noqa: E501
 
 
 class LocalPath(pathlib.Path, CommonPath):

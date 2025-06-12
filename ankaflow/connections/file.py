@@ -66,7 +66,7 @@ class Parquet(Connection):
             await self.c.sql(f"""
                 CREATE OR REPLACE TABLE "{table_name}" AS
                 SELECT * FROM read_parquet('{path}', union_by_name = true) LIMIT 1
-            """)
+            """)  # noqa: E501
             return await self.schema_.show(table_name)
         except Exception as e:
             return self.schema_.error(e)

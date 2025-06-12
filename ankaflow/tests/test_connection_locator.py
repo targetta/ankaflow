@@ -29,12 +29,12 @@ class LocatorTest(unittest.TestCase):
         self.assertIsInstance(result, S3Path)
         self.assertEqual(str(result), "s3://my-bucket/path/to/data.parquet")
 
-    def test_absolute_local_path_converted_to_relative(self):
+    def test_absolute_local_path_directly_under_root(self):
         cfg = self.make_cfg("/data/bucket", "prefix")
         locator = Locator(cfg)
         result = locator.locate("/absolute/path.csv")
         self.assertIsInstance(result, LocalPath)
-        self.assertEqual(str(result), "/data/bucket/prefix/absolute/path.csv")
+        self.assertEqual(str(result), "/data/bucket/absolute/path.csv")
 
     def test_relative_path_no_prefix(self):
         cfg = self.make_cfg("s3://my-bucket")

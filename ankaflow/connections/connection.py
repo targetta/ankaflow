@@ -63,38 +63,45 @@ class Locator:
 
         name_path = PathFactory.make(name)
 
+        # Rule: Absolute remote path must remain as is
         if isinstance(name_path, RemotePath):
             return name_path
-        name_is_abs = name_path.is_absolute()
 
-        # Cannot access attribute "joinpath" for class "CommonPath"
+        # Rule: root must exist and be absolute
         if not self.bucket:
             raise ValueError("Root not specified")
         root_path = PathFactory.make(self.bucket)
         if not root_path.is_absolute():
             raise ValueError("Root must be absolute")
 
-        # Normalize prefix to same path type
-        prefix = (self.prefix or "").lstrip("/")
-        prefix_path = (
-            root_path.joinpath(*prefix.split("/")) if prefix else root_path
-        )
-
-        # Convert absolute local paths to relative
-        if (
-            name_is_abs
-            and name_path.path.startswith("/")
-            and "://" not in name_path.path
-        ):
+        # Rule: absolute name path directly under root
+        if name_path.is_absolute():
             name_path = PathFactory.make(name_path.path.lstrip("/"))
-            name_is_abs = False
+            return root_path.joinpath(*name_path.parts)
 
-        # Return remote absolute path if already correct
-        if name_is_abs and (
-            isinstance(name_path, type(root_path))
-            and name_path.anchor == root_path.anchor
-        ):
-            return name_path
+        # Rule: If name path is relative, it must be under bucket/prefix/.
+        # Normalize the prefix by stripping any leading slashes.
+        prefix_str = (self.prefix or "").lstrip("/")
+        
+        prefix_path_obj = None
+        if prefix_str:
+            prefix_path_obj = PathFactory.make(prefix_str)
+            # Guard 1: Ensure prefix is relative
+            if prefix_path_obj.is_absolute():
+                raise ValueError(f"Configured data_prefix '{self.prefix}' must be a relative path.")  # noqa: E501
+            # Guard 2: Prevent prefix from 'sneaking out' of root (via '..')
+            # This is a basic check.A more comprehensive check might
+            # involve full path resolution and comparison, but typically,
+            # preventing '..' at the prefix level is sufficient
+            # if the Path object's joinpath handles it correctly.
+            if any(part == ".." for part in prefix_path_obj.parts):
+                raise ValueError(f"Configured data_prefix '{self.prefix}' cannot contain '..' segments.")  # noqa: E501
+
+        # Build the full prefix path: root_path + prefix_str parts
+        # If no prefix_str, prefix_path will just be root_path.
+        prefix_path = root_path
+        if prefix_path_obj:
+            prefix_path = root_path.joinpath(*prefix_path_obj.parts)
 
         # Join with prefix (already includes root)
         return prefix_path.joinpath(*name_path.parts)
