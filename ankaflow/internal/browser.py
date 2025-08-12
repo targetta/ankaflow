@@ -108,9 +108,19 @@ class Relation:
         """
         self.rel = relation
 
+    async def fetchone(self):
+        return self.rel.fetchone()
+
+    async def fetchall(self):
+        return self.rel.fetchall()
+
     async def df(self) -> DataFrame:
         """Returns the relation as a pandas DataFrame."""
         return self.rel.df()
+
+    async def arrow(self) -> DataFrame:
+        """Returns the relation as Arrow table."""
+        return self.rel.arrow()
 
 
 class RemoteObject:

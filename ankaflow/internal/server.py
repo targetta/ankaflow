@@ -1,5 +1,6 @@
 import duckdb
 import os
+from pyarrow import Table
 from io import FileIO, StringIO
 import typing as t
 import logging
@@ -19,8 +20,17 @@ class Relation:
     def raw(self) -> duckdb.DuckDBPyRelation:
         return self.rel
 
+    async def fetchone(self):
+        return self.rel.fetchone()
+
+    async def fetchall(self):
+        return self.rel.fetchall()
+
     async def df(self):
         return self.rel.df()
+
+    async def arrow(self) -> Table:
+        return self.rel.arrow()
 
 
 class DDB:

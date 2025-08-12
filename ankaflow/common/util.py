@@ -331,31 +331,6 @@ def duckdb_to_pyarrow_type(duckdb_type: str):
     raise ValueError(f"Unsupported DuckDB type: {duckdb_type}")
 
 
-def pandas_to_pyarrow(
-    df: pd.DataFrame, schema: t.Union[m.Columns, t.List[m.Column]]
-) -> pa.Table:
-    """
-    Convert a Pandas DataFrame to a PyArrow Table with a specific schema.
-
-    :param df: Input Pandas DataFrame
-    :param schema: Schema list obtained at runtime (DuckDB format)
-    :return: PyArrow Table
-    """
-    # Define PyArrow schema
-    arrow_fields = []
-    for column in schema:
-        column_name = column.name
-        column_type = column.type
-        arrow_type = duckdb_to_pyarrow_type(column_type)
-        arrow_fields.append(pa.field(column_name, arrow_type))
-
-    # Convert DataFrame to PyArrow Table with enforced schema
-    arrow_schema = pa.schema(arrow_fields)
-    table = pa.Table.from_pandas(df, schema=arrow_schema, preserve_index=False)
-
-    return table
-
-
 # TODO: Split into separate QueryRenderer class
 def build_ranked_query(
     query: str,

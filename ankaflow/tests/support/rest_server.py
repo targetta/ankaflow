@@ -240,7 +240,9 @@ def stop() -> None:
     """Shutdown the HTTP server."""
     try:
         requests.post(f"{BASE_URL}/shutdown")
-        if server_thread and server_thread.is_alive():
+        if server_thread:
             server_thread.join(timeout=2)
+        if server:
+            server.server_close()
     except Exception:
         pass

@@ -5,7 +5,6 @@ import typing as t
 from sqlglot import parse_one
 import logging
 import pyarrow as pa
-import pandas as pd
 
 from . import errors as e
 from .. import errors as ee
@@ -14,9 +13,11 @@ from ..models.enums import SinkStrategy
 from ..models.connections import DeltatableConnection
 from ..internal import CatalogException
 from .connection import Connection
-from ..common.util import pandas_to_pyarrow, duckdb_to_pyarrow_type
+from ..common.util import duckdb_to_pyarrow_type
 
 log = logging.getLogger(__name__)
+
+ArrowLike = t.Union[pa.Table, pa.RecordBatchReader]
 
 
 class Deltatable(Connection):
@@ -186,18 +187,19 @@ class Deltatable(Connection):
         )
         return view_name
 
-    async def _read_view(self, view_name: str):
-        """
-        Reads data from a temporary view into a DataFrame.
+    async def _read_view(self, view_name: str) -> ArrowLike:
+        """Return Arrow result directly from DuckDB.
 
         Args:
-            view_name: The temporary view name to read from.
+            view_name (str): Temporary view name to read from.
 
         Returns:
-            pd.DataFrame: The resulting DataFrame.
+            pa.RecordBatchReader | pa.Table: Arrow result for the sink.
         """
         rel = await self.c.sql(f'SELECT * FROM "{view_name}"')
-        return await rel.df()
+        # Prefer streaming for large results if your relation supports it:
+        # return await rel.record_batch_reader()  # wrapper supports awaitable
+        return await rel.arrow()  # if wrapper exposes an awaitable Arrow table
 
     async def _drop_view(self, view_name: str):
         """
@@ -208,20 +210,22 @@ class Deltatable(Connection):
         """
         await self.c.sql(f'DROP VIEW IF EXISTS "{view_name}"')
 
-    async def _to_arrow(
-        self, df: pd.DataFrame, schema: t.Union[m.Columns, t.List[m.Column]]
-    ) -> pa.Table:
-        """
-        Converts a DataFrame to a PyArrow Table using the provided schema.
+    async def _to_arrow(self, data: ArrowLike, schema: pa.Schema) -> ArrowLike:
+        """Normalize Arrow data if needed.
 
         Args:
-            df: The pandas DataFrame to convert.
-            schema: The schema to apply when converting.
+            data (ArrowLike): Arrow table or reader.
+            schema (pa.Schema): Target schema (used only if you must cast).
 
         Returns:
-            pa.Table: A PyArrow Table.
+            ArrowLike: Arrow reader (preferred) or combined table.
         """
-        return pandas_to_pyarrow(df, schema)
+        # If your writer accepts a RecordBatchReader, return as-is.
+        if isinstance(data, pa.RecordBatchReader):
+            return data
+
+        # For pa.Table, ensure predictable layout (optional):
+        return data.combine_chunks()
 
     def _generate_metadata(self) -> str:
         """
@@ -263,7 +267,7 @@ class Deltatable(Connection):
         return kwargs
 
     async def _write_deltatable(
-        self, uri: str, tbl: pa.Table, create_flag: bool = False
+        self, uri: str, tbl: ArrowLike, create_flag: bool = False
     ):
         """
         Writes to an existing Delta table.
@@ -273,13 +277,23 @@ class Deltatable(Connection):
             tbl: Arrow Table to write
         """
         try:
+            """Write Arrow to Delta; stream if possible."""
+            # If delta-rs accepts readers directly, pass the reader.
+            if isinstance(tbl, pa.RecordBatchReader):
+                dl.write_deltalake(
+                    uri,
+                    tbl,
+                    **self._make_delta_kwargs(
+                        meta=None, create_flag=create_flag
+                    ),
+                )
+                return
+
+            # pa.Table path:
             dl.write_deltalake(
                 uri,
                 tbl,
                 **self._make_delta_kwargs(meta=None, create_flag=create_flag),
-            )
-            self.log.debug(
-                f"Written {tbl.num_rows} records to {'existing' if not create_flag else 'new'} Delta table"  # noqa:E501
             )
         except DeltaError as ex:
             raise e.UnrecoverableSinkError(
@@ -338,38 +352,85 @@ class Deltatable(Connection):
                 f"Failed to create empty Delta table: {ex}"
             ) from None  # noqa:E501
 
-    async def _create_strategy(self, df: pd.DataFrame) -> SinkStrategy:
-        """
-        Determines sink strategy based on presence of data and schema.
+    def _create_strategy(self, rows: int) -> SinkStrategy:
+        """Decide SKIP/CREATE/WRITE using row count and declared schema.
+
+        Args:
+            rows (int): Number of rows available to write.
 
         Returns:
-            SinkStrategy: One of SKIP, CREATE, or WRITE
+            SinkStrategy: SKIP, CREATE, or WRITE.
         """
-        if not self.conn.fields and df.empty:
+        has_schema = bool(self.conn.fields)
+        if not has_schema and rows == 0:
             return SinkStrategy.SKIP
-        if self.conn.fields and df.empty:
+        if has_schema and rows == 0:
             return SinkStrategy.CREATE
         return SinkStrategy.WRITE
 
-    async def _infer_schema(
-        self, df: t.Optional[pd.DataFrame] = None
-    ) -> pa.Schema:
-        """
-        Infers schema either from DataFrame or from self.conn.fields.
+    async def _count_rows(self, view_name: str) -> int:
+        """Count rows in the temp view without materializing data.
 
         Args:
-            df: Optional DataFrame to infer schema from.
-            If None or empty, uses declared schema.
+            view_name (str): Temporary view name.
 
         Returns:
-            pa.Schema: PyArrow schema to use for Arrow
-                conversion or table creation.
-
-        Raises:
-            e.ConfigurationError: if no data and no schema are available.
+            int: Row count.
         """
-        if df is not None and not df.empty:
-            return pa.Schema.from_pandas(df, preserve_index=False)
+        rel = await self.c.sql(
+                f'SELECT COUNT(*)::UBIGINT AS n FROM "{view_name}"'  # cast avoids odd integer types
+            )
+        row = await rel.fetchone()  # returns (n,)
+        if row is None:
+            return 0
+        return int(row[0])
+    
+    def _cast_dict_to_string(self, tbl: pa.Table) -> pa.Table:
+        """Return a table where any dictionary-encoded columns are cast to string.
+
+        Args:
+            tbl (pa.Table): Input Arrow table.
+
+        Returns:
+            pa.Table: Table with dictionary columns converted to pa.string().
+        """
+        # Fast path: if no dictionary columns, return as-is.
+        if all(not pa.types.is_dictionary(col.type) for col in tbl.itercolumns()):
+            return tbl
+
+        names = tbl.schema.names
+        out_cols: list[pa.Array] = []
+
+        for col in tbl.itercolumns():
+            if pa.types.is_dictionary(col.type):
+                # Avoid building an intermediate Table: convert only this column.
+                # to_pylist() is robust; if you need to preserve large binary,
+                # replace with col.cast(pa.string()) when upstream supports it.
+                out_cols.append(pa.array(col.to_pylist(), type=pa.string()))
+            else:
+                out_cols.append(col)
+
+        # Reuse metadata if present
+        return pa.table(out_cols, names=names, metadata=tbl.schema.metadata)
+
+    async def _infer_schema(
+        self, data: t.Optional[ArrowLike] = None
+    ) -> pa.Schema:
+        """Infer schema from Arrow data or declared fields.
+
+        Args:
+            data (pa.RecordBatchReader | pa.Table | None): Arrow data.
+
+        Returns:
+            pa.Schema: Schema for writing.
+        """
+        if data is not None:
+            schema = (
+                data.schema
+                if isinstance(data, pa.RecordBatchReader)
+                else data.schema
+            )
+            return schema
 
         if not self.conn.fields:
             raise ee.ConfigurationError(
@@ -403,36 +464,38 @@ class Deltatable(Connection):
         """
         uri = self.locate()
         view = await self._create_temp_view(from_name)
-        df = await self._read_view(view)
+        rows = await self._count_rows(view)  # NEW
+        data = await self._read_view(view)  # Arrow
         await self._drop_view(view)
 
-        strategy = await self._create_strategy(df)
+        strategy = self._create_strategy(rows)
         if strategy == SinkStrategy.SKIP:
             self.log.info(f"{self.name}: No schema or data to insert.")
             return
 
         schema = await self._infer_schema(
-            df if strategy == SinkStrategy.WRITE else None
+            data if strategy == SinkStrategy.WRITE else None
         )
-
-        tbl = await self._to_arrow(df, schema)
+        arrow_out = await self._to_arrow(data, schema)
+        arrow_out = self._cast_dict_to_string(arrow_out)
 
         is_delta = dl.DeltaTable.is_deltatable(
             uri, storage_options=self.delta_opts
         )
+
         if strategy == SinkStrategy.CREATE:
-            # Only create explicitly if no Delta table exists and we have schema
             if not is_delta and self.conn.fields:
                 await self._create_deltatable(uri)
-
-            # Always write if there's data
-            if not df.empty:
-                await self._write_deltatable(uri, tbl)
+            if rows > 0:
+                await self._write_deltatable(uri, arrow_out)
         elif strategy == SinkStrategy.WRITE:
-            if is_delta:
-                await self._write_deltatable(uri, tbl)
-            else:
-                await self._write_deltatable(uri, tbl, create_flag=not is_delta)
+            await self._write_deltatable(
+                uri, arrow_out, create_flag=not is_delta
+            )
+
+        self.log.debug(
+            f"Written {rows} records to {'existing' if is_delta else 'new'} Delta table"  # noqa:E501
+        )
 
         if self.conn.optimize is not None:
             try:

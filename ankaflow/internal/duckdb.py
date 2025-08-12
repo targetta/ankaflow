@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import typing as t
 import duckdb
 from pandas import DataFrame
+from pyarrow import Table
 from io import StringIO, FileIO
 import sys
 from duckdb import DuckDBPyRelation  # noqa:E501
@@ -28,7 +29,19 @@ class Relation(ABC):
         pass
 
     @abstractmethod
+    async def fetchone(self) -> t.Tuple[t.Any, ...] | None:
+        pass
+
+    @abstractmethod
+    async def fetchall(self) -> t.List[t.Any]:
+        pass
+
+    @abstractmethod
     async def df(self) -> DataFrame:
+        pass
+
+    @abstractmethod
+    async def arrow(self) -> Table:
         pass
 
 

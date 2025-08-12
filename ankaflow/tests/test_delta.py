@@ -3,7 +3,7 @@ import tempfile
 import os
 import shutil
 from unittest.mock import MagicMock, AsyncMock
-import pandas as pd
+# import pandas as pd
 import pyarrow as pa
 
 from deltalake import DeltaTable
@@ -20,10 +20,11 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.path = os.path.join(self.tmpdir, "table.delta")
-        self.df = pd.DataFrame(
-            {"id": [1, 2], "amount": [100.5, 200.0], "name": ["Alice", "Bob"]}
-        )
-        self.arrow_table = pa.Table.from_pandas(self.df)
+        self.arrow_table = pa.table({
+            "id": pa.array([1, 2], type=pa.int64()),
+            "amount": pa.array([100.5, 200.0], type=pa.float64()),
+            "name": pa.array(["Alice", "Bob"], type=pa.string()),
+        })
 
 # Argument missing for parameter "create_statement"Pylance
         self.mock_conn = m.DeltatableConnection(
@@ -64,25 +65,25 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
                 Column(name="amount", type="DOUBLE"),
             ]
         )
-        empty_df = pd.DataFrame()
-        result = await self.instance._create_strategy(empty_df)
+        result = self.instance._create_strategy(0)
         self.assertEqual(result, SinkStrategy.CREATE)
 
         self.instance.conn.fields = None
-        result = await self.instance._create_strategy(empty_df)
+        result = self.instance._create_strategy(0)
         self.assertEqual(result, SinkStrategy.SKIP)
 
-        result = await self.instance._create_strategy(self.df)
+        result = self.instance._create_strategy(2)
         self.assertEqual(result, SinkStrategy.WRITE)
 
     async def test_infer_schema_from_df(self):
-        schema = await self.instance._infer_schema(self.df)
+        schema = await self.instance._infer_schema(self.arrow_table)
         self.assertIsInstance(schema, pa.Schema)
 
     async def test_to_arrow_conversion(self):
-        schema = await self.instance._infer_schema(self.df)
-        tbl = await self.instance._to_arrow(self.df, schema)
-        self.assertIsInstance(tbl, pa.Table)
+        schema = await self.instance._infer_schema(self.arrow_table)
+        tbl_or_reader = await self.instance._to_arrow(self.arrow_table, schema)
+        self.assertTrue(isinstance(tbl_or_reader, pa.Table) or isinstance(tbl_or_reader, pa.RecordBatchReader))
+
 
     def test_make_delta_kwargs(self):
         kwargs = self.instance._make_delta_kwargs(meta="test", create_flag=True)
@@ -175,3 +176,9 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.instance.c.sql = AsyncMock()
         await self.instance.tap("SELECT * FROM Deltatable", limit=0)
         self.instance.c.sql.assert_awaited()
+
+    async def test_cast_dict_to_string(self):
+        dict_col = pa.DictionaryArray.from_arrays(pa.array([0,1,0]), pa.array(["a","b"]))
+        t = pa.table({"k": dict_col})
+        t2 = self.instance._cast_dict_to_string(t)
+        assert pa.types.is_string(t2["k"].type)
