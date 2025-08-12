@@ -30,16 +30,26 @@ class Variable(Connection):
 
 class Parquet(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        path = self.locate(use_wildcard=True)
-        stmt = f"""
-            CREATE OR REPLACE TABLE
-            "{self.name}"
-            AS SELECT
-            {query or "*"}
-            FROM read_parquet('{path}', union_by_name = true)
-        """
-        if limit:
-            stmt = parse_one(stmt).subquery().limit(limit).sql()  # type: ignore[attr-defined]
+        if self.conn.raw_dispatch:
+            if not query:
+                raise ValueError("Query is mandatory")
+            rewritten = self._raw_sql_rewriter(query)
+            stmt = f"""
+                CREATE TABLE "{self.name}"
+                AS
+                {rewritten}
+                """.strip()
+        else:
+            path = self.locate(use_wildcard=True)
+            stmt = f"""
+                CREATE OR REPLACE TABLE
+                "{self.name}"
+                AS SELECT
+                {query or "*"}
+                FROM read_parquet('{path}', union_by_name = true)
+            """
+            if limit:
+                stmt = parse_one(stmt).subquery().limit(limit).sql()  # type: ignore[attr-defined]
         try:
             await self.c.sql(stmt)
         except Exception as e:

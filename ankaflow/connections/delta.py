@@ -137,29 +137,37 @@ class Deltatable(Connection):
 
     async def tap(
         self,
-        query: t.Optional[str] = "SELECT * FROM Deltatable",
+        query: t.Optional[str] = None,
         limit: int = 0,
     ) -> None:
         if not query:
             raise ValueError("Query is mandatory")
 
-        # Use delta_scan() directly in the FROM clause
-        selectable = f"delta_scan('{self.locate(use_wildcard=True)}')"
+        if self.conn.raw_dispatch:
+            rewritten = self._raw_sql_rewriter(query)
+            final_sql = f"""
+                CREATE TABLE "{self.name}"
+                AS
+                {rewritten}
+                """.strip()
+        else:
+            # Use delta_scan() directly in the FROM clause
+            selectable = f"delta_scan('{self.locate(use_wildcard=True)}')"
 
-        # Replace the source with the real delta_scan(...) call
-        qry, where_clause = self.ranking(
-            selectable, query, validate_simple=True
-        )
+            # Replace the source with the real delta_scan(...) call
+            qry, where_clause = self.ranking(
+                selectable, query, validate_simple=True
+            )
 
-        # Apply optional limit
-        if limit:
-            qry = parse_one(qry).subquery().limit(limit).sql()  # type: ignore[attr-defined]
+            # Apply optional limit
+            if limit:
+                qry = parse_one(qry).subquery().limit(limit).sql()  # type: ignore[attr-defined]
 
-        # Inline into final CREATE TABLE statement (no CTE!)
-        final_sql = f"""
-            CREATE TABLE "{self.name}" AS
-            SELECT * FROM ({qry}) {where_clause}
-        """.strip()
+            # Inline into final CREATE TABLE statement (no CTE!)
+            final_sql = f"""
+                CREATE TABLE "{self.name}" AS
+                SELECT * FROM ({qry}) {where_clause}
+            """.strip() 
 
         try:
             await self.c.sql(final_sql)
@@ -280,7 +288,9 @@ class Deltatable(Connection):
             uri: Delta table URI
             tbl: Arrow Table to write
         """
-        delta_kwargs = self._make_delta_kwargs(meta=None, create_flag=create_flag)
+        delta_kwargs = self._make_delta_kwargs(
+            meta=None, create_flag=create_flag
+        )
         try:
             """Write Arrow to Delta; stream if possible."""
             # If delta-rs accepts readers directly, pass the reader.

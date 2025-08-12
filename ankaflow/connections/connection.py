@@ -22,6 +22,11 @@ log = logging.getLogger(__name__)
 
 class UnionConnection(PhysicalConnection, VersionedConnection): ...
 
+_LOCATOR_PATTERNS = [
+    r"(delta_scan)\(\s*'([^']+)'\s*",
+    r"(read_parquet)\(\s*'([^']+)'\s*",
+]
+
 
 class Locator:
     def __init__(self, config: ConnectionConfiguration) -> None:
@@ -239,6 +244,41 @@ class Connection:
         __init__.
         """
         pass
+
+    def _raw_sql_rewriter(self, sql: str) -> str:
+        """Rewrites short locators in supported DuckDB table
+        functions to full locators.
+
+        Args:
+            sql (str): The original SQL query containing short locators.
+
+        Returns:
+            str: SQL query with short locators replaced with full resolved paths.
+        """
+        for pattern in _LOCATOR_PATTERNS:
+            def _replace(match: re.Match) -> str:
+                func, short_locator = match.groups()
+
+                # 1. Determine if absolute
+                name_path = PathFactory.make(short_locator)
+                if name_path.is_absolute():
+                    return match.group(0)  # Leave as is
+
+                # 2. Resolve full locator
+                long_locator = self.locate(use_wildcard=True)
+
+                # 3. Safety check: ensure short is in long
+                if short_locator not in long_locator:
+                    raise ValueError(
+                        f"Locator '{short_locator}' not found in resolved '{long_locator}'"  # noqa: E501
+                    )
+
+                # 4. Return with replacement, preserving trailing kwargs
+                return match.group(0).replace(short_locator, long_locator, 1)
+
+            sql = re.sub(pattern, _replace, sql, flags=re.IGNORECASE)
+
+        return sql
 
     def locate(self, name: str = None, use_wildcard: bool = False) -> str:  # type: ignore[assignment]
         name = str(name or self.conn.locator)

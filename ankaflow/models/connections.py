@@ -57,6 +57,16 @@ class PhysicalConnection(Connection):
     Table name or file name or URI, or other identifier
     required by the connection.
     """
+    raw_dispatch: bool | None = None
+    """
+    If True, sends the provided SQL query directly without altering
+    locators if fully qualified, or adding FROM clauses.
+    The query must be a valid SELECT statement.
+    Useful for full control over complex queries.
+
+    In Deltatable and Parquet connections supports rewriting
+    short locators as convenience.
+    """
 
 
 class EphemeralConnection(Connection):
