@@ -1,3 +1,4 @@
+import shlex
 import deltalake as dl
 from deltalake.exceptions import DeltaError
 from deltalake.fs import DeltaStorageHandler
@@ -5,6 +6,7 @@ import typing as t
 from sqlglot import parse_one
 import logging
 import pyarrow as pa
+import asyncio
 
 from . import errors as e
 from .. import errors as ee
@@ -378,13 +380,13 @@ class Deltatable(Connection):
             int: Row count.
         """
         rel = await self.c.sql(
-                f'SELECT COUNT(*)::UBIGINT AS n FROM "{view_name}"'  # cast avoids odd integer types
-            )
+            f'SELECT COUNT(*)::UBIGINT AS n FROM "{view_name}"'  # cast avoids odd integer types
+        )
         row = await rel.fetchone()  # returns (n,)
         if row is None:
             return 0
         return int(row[0])
-    
+
     def _cast_dict_to_string(self, tbl: pa.Table) -> pa.Table:
         """Return a table where any dictionary-encoded columns are cast to string.
 
@@ -395,7 +397,9 @@ class Deltatable(Connection):
             pa.Table: Table with dictionary columns converted to pa.string().
         """
         # Fast path: if no dictionary columns, return as-is.
-        if all(not pa.types.is_dictionary(col.type) for col in tbl.itercolumns()):
+        if all(
+            not pa.types.is_dictionary(col.type) for col in tbl.itercolumns()
+        ):
             return tbl
 
         names = tbl.schema.names
@@ -540,14 +544,26 @@ class Deltatable(Connection):
         Supported commands:
         - DROP Deltatable
         - TRUNCATE Deltatable
+        - OPTIMIZE Deltatable [COMPACT] [VACUUM] [AGE=<int>[d|h]] [DRY_RUN] [CLEANUP]
 
         All other statements raise an error.
-        """
-        stmt = statement.strip().lower()
-        if stmt == "drop deltatable":
+        """  # noqa: E501
+        tokens: t.List[str] = [t.casefold() for t in shlex.split(statement)]
+        if not tokens:
+            raise ValueError(f"Invalid Delta SQL command: {statement}")
+
+        if tokens == ["drop", "deltatable"]:
             return self._drop_deltatable()
-        elif stmt == "truncate deltatable":
+        elif tokens == ["truncate", "deltatable"]:
             return await self._truncate_deltatable()
+        elif (
+            len(tokens) >= 2
+            and tokens[0] == "optimize"
+            and tokens[1] == "deltatable"
+        ):
+            return await self._sql_optimize(
+                statement
+            )  # pass original for parsing
         else:
             raise ValueError(f"Invalid Delta SQL command: {statement}")
 
@@ -572,3 +588,92 @@ class Deltatable(Connection):
             self.log.info(f"Delta table truncated: {uri}")
         except Exception as ex:
             raise e.ConnectionException(f"Truncate failed: {ex}") from None
+
+    def _parse_optimize_flags(self, stmt: str) -> dict[str, t.Any]:
+        """Parse OPTIMIZE DELTATABLE flags into an options dict.
+
+        Args:
+            stmt (str): Original statement (case-insensitive).
+
+        Returns:
+            dict[str, Any]: {
+                "compact": bool,
+                "vacuum": bool,
+                "cleanup": bool,
+                "dry_run": bool,
+                "retention_hours": int,
+            }
+        """
+        toks = [t.casefold() for t in shlex.split(stmt)]
+        compact = "compact" in toks
+        vacuum = "vacuum" in toks
+        cleanup = "cleanup" in toks
+        dry_run = "dry_run" in toks
+
+        # Defaulting rule:
+        # - If neither COMPACT nor VACUUM given:
+        #     - If CLEANUP present → cleanup-only (no compact/vacuum)
+        #     - Else → run both compact + vacuum
+        if not compact and not vacuum:
+            if cleanup:
+                compact = False
+                vacuum = False
+            else:
+                compact = True
+                vacuum = True
+
+        # AGE parsing; default 7 days unless unused
+        retention_hours = 7 * 24
+        for tok in toks:
+            if tok.startswith("age="):
+                val = tok.split("=", 1)[1]
+                if val.endswith("h"):
+                    retention_hours = int(val[:-1])
+                elif val.endswith("d"):
+                    retention_hours = int(val[:-1]) * 24
+                else:
+                    retention_hours = int(val) * 24
+                break
+
+        # guardrails
+        retention_hours = max(0, min(retention_hours, 365 * 24))
+
+        return {
+            "compact": compact,
+            "vacuum": vacuum,
+            "cleanup": cleanup,
+            "dry_run": dry_run,
+            "retention_hours": retention_hours,
+        }
+
+    async def _sql_optimize(self, statement: str) -> None:
+        """Handle 'OPTIMIZE DELTATABLE ...' pseudo-SQL.
+
+        Args:
+            statement (str): Full original statement for parsing.
+        """
+        uri = self.locate()
+        opts = self._parse_optimize_flags(statement)
+
+        # delta-rs API is sync -> keep loop responsive
+        def _run():
+            dt = dl.DeltaTable(uri, storage_options=self.delta_opts)
+            if opts["compact"]:
+                out = dt.optimize.compact()
+                log.debug(out)
+            if opts["vacuum"]:
+                out = dt.vacuum(
+                    opts["retention_hours"],
+                    dry_run=opts["dry_run"],
+                    # mirror your existing behavior:
+                    enforce_retention_duration=False,
+                )
+                log.debug(out)
+            if opts["cleanup"]:
+                dt.cleanup_metadata()
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _run)
+        self.log.info(
+            f"OPTIMIZE {uri} compact={opts['compact']} vacuum={opts['vacuum']} age={opts['retention_hours']}h dry_run={opts['dry_run']} cleanup={opts['cleanup']}"  # noqa: E501
+        )

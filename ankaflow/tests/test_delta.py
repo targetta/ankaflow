@@ -2,7 +2,7 @@ import unittest
 import tempfile
 import os
 import shutil
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 # import pandas as pd
 import pyarrow as pa
 
@@ -182,3 +182,115 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         t = pa.table({"k": dict_col})
         t2 = self.instance._cast_dict_to_string(t)
         assert pa.types.is_string(t2["k"].type)
+
+
+def _patch_target() -> str:
+    """Resolve the correct patch target for DeltaTable."""
+    return f"{Deltatable.__module__}.dl.DeltaTable"
+
+
+class TestDeltaOptimizeSQL(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        self.path = os.path.join(self.tmpdir, "table.delta")
+
+        # Minimal instance wiring
+        self.instance = Deltatable.__new__(Deltatable)
+        self.instance.conn = MagicMock()
+        self.instance.name = "test_table"
+        self.instance.ctx = MagicMock()
+        self.instance.vars = MagicMock()
+        self.instance.delta_opts = {}
+        self.instance.log = MagicMock()
+        self.instance.locate = lambda use_wildcard=False: self.path  # type: ignore
+        self.instance.c = AsyncMock()
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    @patch(_patch_target())
+    async def test_optimize_default_runs_compact_and_vacuum(self, MockDT: MagicMock) -> None:
+        """OPTIMIZE DELTATABLE → compact + vacuum with default retention."""
+        dt = MockDT.return_value
+        dt.optimize.compact = MagicMock()
+        dt.vacuum = MagicMock()
+        dt.cleanup_metadata = MagicMock()
+
+        await self.instance.sql("optimize deltatable")
+
+        dt.optimize.compact.assert_called_once()
+        dt.vacuum.assert_called_once()
+        # default 7 days → hours
+        args, kwargs = dt.vacuum.call_args
+        self.assertEqual(args[0], 7 * 24)
+        self.assertEqual(kwargs.get("dry_run", False), False)
+        self.assertEqual(kwargs.get("enforce_retention_duration", False), False)
+        # cleanup is optional in default; assert not called implicitly
+        dt.cleanup_metadata.assert_not_called()
+
+    @patch(_patch_target())
+    async def test_optimize_cleanup_only(self, MockDT: MagicMock) -> None:
+        """OPTIMIZE DELTATABLE CLEANUP → only cleanup, no compact/vacuum."""
+        dt = MockDT.return_value
+        dt.optimize.compact = MagicMock()
+        dt.vacuum = MagicMock()
+        dt.cleanup_metadata = MagicMock()
+
+        await self.instance.sql("optimize deltatable cleanup")
+
+        dt.optimize.compact.assert_not_called()
+        dt.vacuum.assert_not_called()
+        dt.cleanup_metadata.assert_called_once()
+
+    @patch(_patch_target())
+    async def test_optimize_compact_only(self, MockDT: MagicMock) -> None:
+        """OPTIMIZE DELTATABLE COMPACT → only compaction."""
+        dt = MockDT.return_value
+        dt.optimize.compact = MagicMock()
+        dt.vacuum = MagicMock()
+        dt.cleanup_metadata = MagicMock()
+
+        await self.instance.sql("OPTIMIZE   Deltatable   COMPACT")  # mixed case + spacing
+
+        dt.optimize.compact.assert_called_once()
+        dt.vacuum.assert_not_called()
+        dt.cleanup_metadata.assert_not_called()
+
+    @patch(_patch_target())
+    async def test_optimize_vacuum_age_hours_dryrun(self, MockDT: MagicMock) -> None:
+        """VACUUM AGE=36h DRY_RUN → no compact; vacuum with 36h dry run."""
+        dt = MockDT.return_value
+        dt.optimize.compact = MagicMock()
+        dt.vacuum = MagicMock()
+        dt.cleanup_metadata = MagicMock()
+
+        await self.instance.sql("optimize deltatable vacuum age=36h dry_run")
+
+        dt.optimize.compact.assert_not_called()
+        dt.vacuum.assert_called_once()
+        args, kwargs = dt.vacuum.call_args
+        self.assertEqual(args[0], 36)
+        self.assertTrue(kwargs.get("dry_run", False))
+        self.assertEqual(kwargs.get("enforce_retention_duration", False), False)
+        dt.cleanup_metadata.assert_not_called()
+
+    @patch(_patch_target())
+    async def test_optimize_compact_vacuum_age_days_cleanup(self, MockDT: MagicMock) -> None:
+        """COMPACT + VACUUM AGE=1 CLEANUP → runs all three in order."""
+        dt = MockDT.return_value
+        dt.optimize.compact = MagicMock()
+        dt.vacuum = MagicMock()
+        dt.cleanup_metadata = MagicMock()
+
+        await self.instance.sql("optimize deltatable compact vacuum age=1 cleanup")
+
+        dt.optimize.compact.assert_called_once()
+        dt.vacuum.assert_called_once()
+        args, _ = dt.vacuum.call_args
+        self.assertEqual(args[0], 24)  # 1 day → 24 hours
+        dt.cleanup_metadata.assert_called_once()
+
+    async def test_sql_invalid_command(self) -> None:
+        """Unknown SQL raises ValueError."""
+        with self.assertRaises(ValueError):
+            await self.instance.sql("optimize something_else")

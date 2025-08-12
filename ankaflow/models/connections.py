@@ -109,6 +109,23 @@ class DeltatableConnection(PhysicalConnection, VersionedConnection):
       default retention days.
 
     String options `vacuum,all` are equivalent to 0.
+
+    Delta connection also supports raw SQL optimization.
+    Pass statement as sql command:
+
+    `OPTIMIZE Deltatable [COMPACT] [VACUUM] [AGE=<int>[d|h]] [DRY_RUN] [CLEANUP]`
+
+    `optimize deltatable`
+    → compact + vacuum with default 7 days
+
+    `optimize deltatable compact`
+    → compact only
+
+    `optimize deltatable vacuum age=36h dry_run`
+    → list files older than 36 hours, don't delete
+
+    `optimize deltatable compact vacuum age=1 cleanup`
+    → compact, vacuum 1 day, then cleanup metadata
     """
 
 
