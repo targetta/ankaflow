@@ -342,7 +342,7 @@ class InternalStageHandler(BaseStageHandler):
                 self.log.info(await self._show(src.show))
             except AttributeError:
                 self.log.info(
-                    dd(f"{src.connection.kind} > {src.name}:\nNothing to show")
+                    dd(f"{src.kind} > {src.name}:\nNothing to show")
                 )
         return name
 
