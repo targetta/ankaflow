@@ -68,6 +68,15 @@ class DeltatableConnection(PhysicalConnection, VersionedConnection):
 
     kind: t.Literal["Deltatable"]  # type: ignore[assignment]
     """"""
+    writer_features: t.Optional[t.List] | None = None
+    """
+    Any supported Delta-rs parameters can be passed to the writer.
+    Example:
+
+    ```
+    writer_features: [TimestampWithoutTimezone]
+    ```
+    """
     partition: t.Optional[t.List[str]] = None
     """
     If set then delta table is partitioned using

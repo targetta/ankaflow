@@ -266,6 +266,8 @@ class Deltatable(Connection):
                 "partition_by": self.conn.partition,
                 "description": meta,
             })
+        if self.conn.writer_features:
+            kwargs["writer_features"] = self.conn.writer_features
         return kwargs
 
     async def _write_deltatable(
@@ -278,6 +280,7 @@ class Deltatable(Connection):
             uri: Delta table URI
             tbl: Arrow Table to write
         """
+        delta_kwargs = self._make_delta_kwargs(meta=None, create_flag=create_flag)
         try:
             """Write Arrow to Delta; stream if possible."""
             # If delta-rs accepts readers directly, pass the reader.
@@ -285,9 +288,7 @@ class Deltatable(Connection):
                 dl.write_deltalake(
                     uri,
                     tbl,
-                    **self._make_delta_kwargs(
-                        meta=None, create_flag=create_flag
-                    ),
+                    **delta_kwargs,
                 )
                 return
 
@@ -295,7 +296,7 @@ class Deltatable(Connection):
             dl.write_deltalake(
                 uri,
                 tbl,
-                **self._make_delta_kwargs(meta=None, create_flag=create_flag),
+                **delta_kwargs,
             )
         except DeltaError as ex:
             raise e.UnrecoverableSinkError(
