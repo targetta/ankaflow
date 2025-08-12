@@ -489,7 +489,7 @@ class StageBlock:
             self.log.info(f"Skip '{self.defs.name}' (schema mode)")
             return None
 
-        handler = StageFactory.get_handler(self)
+        handler = await StageFactory.get_handler(self)
         await handler._init_connection()
         return await handler.show_schema()
 
