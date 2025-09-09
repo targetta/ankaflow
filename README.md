@@ -67,8 +67,8 @@ Each stage is one of: `tap`, `transform`, or `sink`.
 
 ## 📖 Documentation
 
-- [All docs](https://mudam.github.io/ankaflow/)
-- [Pipeline specification](https://mudam.github.io/ankaflow/api/ankaflow.models/)
-- [Live demo](https://mudam.github.io/ankaflow/demo/)
+- [All docs](https://targetta.github.io/ankaflow/)
+- [Pipeline specification](https://targetta.github.io/ankaflow/api/ankaflow.models/)
+- [Live demo](https://targetta.github.io/ankaflow/demo/)
 
 ---
