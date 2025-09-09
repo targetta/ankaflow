@@ -13,7 +13,7 @@ from ...models import rest as rst
 from ...models import enums
 from .common import MaterializerProtocol, Materializer, MaterializeError
 from ..connection import Connection
-from ...common.util import print_error
+from ...common.util import null_logger, print_error
 
 IS_PYODIDE = sys.platform == "emscripten"
 
@@ -25,17 +25,21 @@ else:
     from .server import RestResponse
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("buimatic")
 
 
 class ResponseHandler:
-    def __init__(self, request: rst.Request, id: str):
+    def __init__(self, request: rst.Request, id: str,
+                 logger: logging.Logger = None):
         self.id = id
         self.req = request
         self.res = request.response
         self._setup()
+        self.log = logger or null_logger()
 
     def _setup(self):
+        # Child classes should use this method
+        # to set up their internals
         pass
 
     async def read_response(self, resp: RestResponse):
@@ -112,6 +116,7 @@ class PaginationHandler(ResponseHandler):
         self.resp = response
         await self.read_response()
         next_req = self.update_request()
+        self.log.debug(f"Next request:\n{next_req}")
         return PaginationHandler.Page(self._records, next_req)
 
 
@@ -131,6 +136,9 @@ class URLPollingHandler(ResponseHandler):
         completed = True
         if self.res.handler.ready_status:
             completed = jmespath.search(self.res.handler.ready_status, data)
+            self.log.debug(
+            f"Waiting for '{self.res.handler.ready_status}', current: {completed}"  # noqa: E501
+            )
         self.wait = self.wait * 1.5 if self.wait else 1
         return (url, completed)
 
@@ -149,12 +157,20 @@ class StatePollingHandler(ResponseHandler):
         #         sleep(self.wait)
         completed = False
         completed = jmespath.search(self.res.handler.ready_status, resp)
+        self.log.debug(
+            f"Waiting for '{self.res.handler.ready_status}', current: {completed}"  # noqa: E501
+        )
         self.wait = self.wait * 1.5 if self.wait else 1
         if completed:
             data = jmespath.search(self.res.locator, resp)
+            self.log.debug(
+                f"Polling complete, data at '{self.res.locator}': {bool(data)}"
+            )
             return (data, completed)
         else:
-            sleep(self.wait)
+            self.log.debug(resp)
+            self.wait = self.wait * 1.5 if self.wait else 1
+            await sleep(self.wait)
             return (None, completed)
 
 
@@ -180,10 +196,7 @@ class RestApi:
         self.confg = client
         self._client: RestClient = None
         self.mat = materializer
-        self.log = logger
-        if not logger:
-            self.log = logging.getLogger()
-            self.log.addHandler(logging.NullHandler())
+        self.log = logger or null_logger()
 
     def create_client(self):
         if self._client:
@@ -205,17 +218,17 @@ class RestApi:
             await self.mat.materialize(data)
             return
         if self.res.handler.kind == rst.ResponseHandlerTypes.STATEPOLLING:
-            poller = StatePollingHandler(self.req, self.id)
+            poller = StatePollingHandler(self.req, self.id, logger=self.log)
+            self.log.info("Start state polling")
             while True:
                 data_status = await poller.poll(resp)
                 if data_status[1]:
                     await self.mat.materialize(data_status[0])
                     break
-                self.log.debug(self.req)
-                resp = await self._client.fetch(self.req)
         # URL Polling
         elif self.res.handler.kind == rst.ResponseHandlerTypes.URLPOLLING:
             poller = URLPollingHandler(self.req, self.id)
+            self.log.info("Start URL polling")
             while True:
                 url_status = await poller.poll(resp)
                 if url_status[1]:
@@ -259,7 +272,8 @@ class RestApi:
             self.log.debug(self.req)
             resp = await self._client.fetch(self.req)
             await self.handle_response(resp)
-        except Exception:
+        except Exception as e:
+            log.exception(e)
             raise
         finally:
             self._client.disconnect()
