@@ -390,8 +390,9 @@ class Deltatable(Connection):
         Returns:
             int: Row count.
         """
+        # cast avoids odd integer types
         rel = await self.c.sql(
-            f'SELECT COUNT(*)::UBIGINT AS n FROM "{view_name}"'  # cast avoids odd integer types
+            f'SELECT COUNT(*)::UBIGINT AS n FROM "{view_name}"' 
         )
         row = await rel.fetchone()  # returns (n,)
         if row is None:

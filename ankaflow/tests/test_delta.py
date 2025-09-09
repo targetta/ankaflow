@@ -3,6 +3,7 @@ import tempfile
 import os
 import shutil
 from unittest.mock import MagicMock, AsyncMock, patch
+
 # import pandas as pd
 import pyarrow as pa
 
@@ -26,11 +27,11 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
             "name": pa.array(["Alice", "Bob"], type=pa.string()),
         })
 
-# Argument missing for parameter "create_statement"Pylance
+        # Argument missing for parameter "create_statement"Pylance
         self.mock_conn = m.DeltatableConnection(
             kind="Deltatable",
             locator=self.path,
-            config=ConnectionConfiguration()
+            config=ConnectionConfiguration(),
         )
 
         self.instance = Deltatable.__new__(Deltatable)
@@ -59,12 +60,10 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.assertIn("CREATE TABLE", sql)
 
     async def test_create_strategy_all_cases(self):
-        self.instance.conn.fields = Columns(
-            [
-                Column(name="id", type="BIGINT"),
-                Column(name="amount", type="DOUBLE"),
-            ]
-        )
+        self.instance.conn.fields = Columns([
+            Column(name="id", type="BIGINT"),
+            Column(name="amount", type="DOUBLE"),
+        ])
         result = self.instance._create_strategy(0)
         self.assertEqual(result, SinkStrategy.CREATE)
 
@@ -82,8 +81,10 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
     async def test_to_arrow_conversion(self):
         schema = await self.instance._infer_schema(self.arrow_table)
         tbl_or_reader = await self.instance._to_arrow(self.arrow_table, schema)
-        self.assertTrue(isinstance(tbl_or_reader, pa.Table) or isinstance(tbl_or_reader, pa.RecordBatchReader))
-
+        self.assertTrue(
+            isinstance(tbl_or_reader, pa.Table)
+            or isinstance(tbl_or_reader, pa.RecordBatchReader)
+        )
 
     def test_make_delta_kwargs(self):
         kwargs = self.instance._make_delta_kwargs(meta="test", create_flag=True)
@@ -91,13 +92,11 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_deltatable_and_show_schema(self):
         # Define fields that simulate what would come from upstream schema inference
-        self.instance.conn.fields = Columns(
-            [
-                Column(name="id", type="BIGINT"),
-                Column(name="amount", type="DOUBLE"),
-                Column(name="name", type="VARCHAR"),
-            ]
-        )
+        self.instance.conn.fields = Columns([
+            Column(name="id", type="BIGINT"),
+            Column(name="amount", type="DOUBLE"),
+            Column(name="name", type="VARCHAR"),
+        ])
 
         # Step 1: Create the Delta table at the path
         await self.instance._create_deltatable(self.path)
@@ -116,7 +115,9 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
 
         # Step 4: Optionally, use show_schema() to get m.Fields
         schema = await self.instance.show_schema()
-        self.assertEqual([f.name for f in schema.values()], ["id", "amount", "name"])
+        self.assertEqual(
+            [f.name for f in schema.values()], ["id", "amount", "name"]
+        )
 
         schema = await self.instance.show_schema()
         self.assertGreaterEqual(len(schema.values()), 1)
@@ -178,7 +179,9 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.instance.c.sql.assert_awaited()
 
     async def test_cast_dict_to_string(self):
-        dict_col = pa.DictionaryArray.from_arrays(pa.array([0,1,0]), pa.array(["a","b"]))
+        dict_col = pa.DictionaryArray.from_arrays(
+            pa.array([0, 1, 0]), pa.array(["a", "b"])
+        )
         t = pa.table({"k": dict_col})
         t2 = self.instance._cast_dict_to_string(t)
         assert pa.types.is_string(t2["k"].type)
@@ -209,7 +212,9 @@ class TestDeltaOptimizeSQL(unittest.IsolatedAsyncioTestCase):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     @patch(_patch_target())
-    async def test_optimize_default_runs_compact_and_vacuum(self, MockDT: MagicMock) -> None:
+    async def test_optimize_default_runs_compact_and_vacuum(
+        self, MockDT: MagicMock
+    ) -> None:
         """OPTIMIZE DELTATABLE → compact + vacuum with default retention."""
         dt = MockDT.return_value
         dt.optimize.compact = MagicMock()
@@ -250,14 +255,18 @@ class TestDeltaOptimizeSQL(unittest.IsolatedAsyncioTestCase):
         dt.vacuum = MagicMock()
         dt.cleanup_metadata = MagicMock()
 
-        await self.instance.sql("OPTIMIZE   Deltatable   COMPACT")  # mixed case + spacing
+        await self.instance.sql(
+            "OPTIMIZE   Deltatable   COMPACT"
+        )  # mixed case + spacing
 
         dt.optimize.compact.assert_called_once()
         dt.vacuum.assert_not_called()
         dt.cleanup_metadata.assert_not_called()
 
     @patch(_patch_target())
-    async def test_optimize_vacuum_age_hours_dryrun(self, MockDT: MagicMock) -> None:
+    async def test_optimize_vacuum_age_hours_dryrun(
+        self, MockDT: MagicMock
+    ) -> None:
         """VACUUM AGE=36h DRY_RUN → no compact; vacuum with 36h dry run."""
         dt = MockDT.return_value
         dt.optimize.compact = MagicMock()
@@ -275,14 +284,18 @@ class TestDeltaOptimizeSQL(unittest.IsolatedAsyncioTestCase):
         dt.cleanup_metadata.assert_not_called()
 
     @patch(_patch_target())
-    async def test_optimize_compact_vacuum_age_days_cleanup(self, MockDT: MagicMock) -> None:
+    async def test_optimize_compact_vacuum_age_days_cleanup(
+        self, MockDT: MagicMock
+    ) -> None:
         """COMPACT + VACUUM AGE=1 CLEANUP → runs all three in order."""
         dt = MockDT.return_value
         dt.optimize.compact = MagicMock()
         dt.vacuum = MagicMock()
         dt.cleanup_metadata = MagicMock()
 
-        await self.instance.sql("optimize deltatable compact vacuum age=1 cleanup")
+        await self.instance.sql(
+            "optimize deltatable compact vacuum age=1 cleanup"
+        )
 
         dt.optimize.compact.assert_called_once()
         dt.vacuum.assert_called_once()

@@ -23,8 +23,13 @@ log = logging.getLogger(__name__)
 class UnionConnection(PhysicalConnection, VersionedConnection): ...
 
 _LOCATOR_PATTERNS = [
+    # Matches single quotes
     r"(delta_scan)\(\s*'([^']+)'\s*",
     r"(read_parquet)\(\s*'([^']+)'\s*",
+
+    # Matches double quotes
+    r'(delta_scan)\(\s*"([^"]+)"\s*',
+    r'(read_parquet)\(\s*"([^"]+)"\s*',
 ]
 
 
@@ -61,7 +66,7 @@ class Locator:
 
         Returns:
             CommonPath: A fully resolved path.
-        """
+        """  # noqa: E501
         if use_wildcard and self.wildcard:
             pattern = re.compile(self.wildcard[0])
             name = re.sub(pattern, self.wildcard[1], name)
@@ -267,10 +272,10 @@ class Connection:
                 # 2. Resolve full locator
                 long_locator = self.locate(use_wildcard=True)
 
-                # 3. Safety check: ensure short is in long
-                if short_locator not in long_locator:
+                # 3. Safety check: ensure short is in connection
+                if short_locator != self.conn.locator:
                     raise ValueError(
-                        f"Locator '{short_locator}' not found in resolved '{long_locator}'"  # noqa: E501
+                        f"Locator '{short_locator}' does not match conection: '{self.conn.locator}'"  # noqa: E501
                     )
 
                 # 4. Return with replacement, preserving trailing kwargs
