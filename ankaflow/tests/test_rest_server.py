@@ -278,6 +278,48 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(common.RestRequestError):
             await self.rest_client.handle_response(response)
 
+    async def test_fetch_retries_on_transport_error(self):
+        req = create_dummy_request()
+        req.max_retries = 2
+        req.initial_backoff = 0.01
+
+        # Ensure httpx.Client is created
+        self.rest_client.connect()
+
+        good_response = httpx.Response(
+            200, request=httpx.Request("GET", "http://test.com")
+        )
+        side_effects = [
+            httpx.TransportError("network down"),
+            httpx.TransportError("connection reset"),
+            good_response,
+        ]
+
+        with patch.object(
+            self.rest_client.client, "get", side_effect=side_effects
+        ) as mock_get:
+            result = await self.rest_client.fetch(req)
+            self.assertIsInstance(result, RestResponse)
+            self.assertEqual(result.resp, good_response)
+            self.assertEqual(mock_get.call_count, 3)  # 2 failures + 1 success
+
+    async def test_fetch_exhausts_retries_and_raises(self):
+        req = create_dummy_request()
+        req.max_retries = 1
+        req.initial_backoff = 0.01
+
+        # Ensure httpx.Client is created
+        self.rest_client.connect()
+
+        with patch.object(
+            self.rest_client.client,
+            "get",
+            side_effect=httpx.TransportError("down"),
+        ) as mock_get:
+            with self.assertRaises(common.RestRequestError):
+                await self.rest_client.fetch(req)
+            self.assertEqual(mock_get.call_count, 2)  # initial + 1 retry
+
 
 if __name__ == "__main__":
     unittest.main()

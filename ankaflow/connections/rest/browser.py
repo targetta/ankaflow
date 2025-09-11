@@ -297,8 +297,8 @@ class RestClient:
         args_json = json.dumps(args)
         url = self.url()
 
-        max_retries = 3
-        wait = 1
+        max_retries = request.max_retries
+        wait = request.initial_backoff
 
         for attempt in range(max_retries + 1):
             try:

@@ -297,3 +297,14 @@ class Request(BaseModel):
     """
     Response handling configuration
     """
+    max_retries: int = 0
+    """
+    Maximum number of retries on transport errors.
+    Default is 0 (no retry).
+    """
+
+    initial_backoff: float = 0.5
+    """
+    Initial backoff time in seconds.
+    Will be multiplied exponentially for subsequent retries (2^n).
+    """

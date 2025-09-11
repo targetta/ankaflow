@@ -63,6 +63,8 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
         self.mock_request.errorhandler = MagicMock()
         self.mock_request.errorhandler.condition = None
         self.mock_request.errorhandler.error_status_codes = []
+        self.mock_request.max_retries = 3
+        self.mock_request.initial_backoff = 0.01
 
         self.mock_client = MagicMock(spec=rst.RestClientConfig)
         self.mock_client.base_url = "https://example.com"

@@ -241,25 +241,40 @@ class RestClient:
             )
 
     async def fetch(self, request: rst.Request) -> RestResponse:
-        """Fetch data from the REST API."""
         self.request = request
         args = self.arguments()
         method = getattr(self.client, request.method.value)
+
+        attempt = 0
         try:
-            response = method(self.url, **args)
-            response = await self.handle_response(response)
-            return RestResponse(response)
-        except httpx.TransportError as e:
-            self.log.warning(
-                print_error(
-                    f"HTTP Transport error {e}", self.url, self.request.query
-                )
-            )
-            raise common.RestRequestError(
-                print_error(
-                    f"HTTP Transport error {e}", self.url, self.request.query
-                )
-            )
+            while True:
+                try:
+                    response = method(self.url, **args)
+                    response = await self.handle_response(response)
+                    return RestResponse(response)
+                except httpx.TransportError as e:
+                    attempt += 1
+                    if attempt > request.max_retries:
+                        self.log.warning(
+                            print_error(
+                                f"HTTP Transport error {e}",
+                                self.url,
+                                self.request.query,
+                            )
+                        )
+                        raise common.RestRequestError(
+                            print_error(
+                                f"HTTP Transport error {e}",
+                                self.url,
+                                self.request.query,
+                            )
+                        )
+                    delay = request.initial_backoff * (2 ** (attempt - 1))
+                    self.log.debug(
+                        f"Retrying after transport error ({attempt}/{request.max_retries}), "  # noqa: E501
+                        f"waiting {delay:.1f}s"
+                    )
+                    await sleep(delay)
         finally:
             self.request = None
 
