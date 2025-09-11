@@ -5069,6 +5069,24 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ankaflow.models.rest.Request.initial_backoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;initial_backoff
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ankaflow.models.rest.Request.max_retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;max_retries
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ankaflow.models.rest.Request.method" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;method
@@ -9948,6 +9966,24 @@
   <a href="#ankaflow.models.rest.Request.errorhandler" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;errorhandler
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ankaflow.models.rest.Request.initial_backoff" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;initial_backoff
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ankaflow.models.rest.Request.max_retries" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;max_retries
     </span>
   </a>
   
@@ -32479,6 +32515,48 @@ such as loops.</p>
 
         <p>Custom error handler e.g. for searching conditions in response
 or custom status codes</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="ankaflow.models.rest.Request.initial_backoff" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">initial_backoff</span>
+
+
+<a href="#ankaflow.models.rest.Request.initial_backoff" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">initial_backoff</span><span class="p">:</span> <span class="n"><span title="float">float</span></span> <span class="o">=</span> <span class="mf">0.5</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Initial backoff time in seconds.
+Will be multiplied exponentially for subsequent retries (2^n).</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h5 id="ankaflow.models.rest.Request.max_retries" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">max_retries</span>
+
+
+<a href="#ankaflow.models.rest.Request.max_retries" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">max_retries</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">=</span> <span class="mi">0</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Maximum number of retries on transport errors.
+Default is 0 (no retry).</p>
 
     </div>
 
