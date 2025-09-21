@@ -1,6 +1,6 @@
 [project]
 name = "ankaflow"
-version = "0.4.1"
+version = "0.4.2"
 description = "Data pipeline (ETL) framework for server and browser"
 authors = [{ name = "Madis Udam" }]
 readme = "README.md"
