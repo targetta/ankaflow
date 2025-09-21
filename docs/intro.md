@@ -83,7 +83,7 @@ Upload a `pipeline.yaml` like:
 
 ## 🙌 Contributing
 
-PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+PRs welcome.
 
 ## 📄 License
 

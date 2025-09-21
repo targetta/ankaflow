@@ -69,7 +69,7 @@ AnkaFlow is a YAML-driven, SQL-powered data pipeline framework designed for both
 
 Write once, run anywhere — from your laptop to the browser. AnkaFlow pipelines adapt to your workflow, combining flexibility, power, and portability.
 
-[Learn more](#) or [View Examples](#)
+[LIVE DEMO](/demo)
 
 
 ---

@@ -1,5 +1,11 @@
 site_name: AnkaFlow Documentation
 site_url: https://example.com/docs
+
+
+# Repository
+repo_name: targetta/ankaflow
+repo_url: https://github.com/targetta/ankaflow
+
 theme:
   name: material
 
@@ -47,7 +53,6 @@ plugins:
             merge_init_into_class: true
             members_order: alphabetical
             scoped_crossrefs: true
-            signature_crossrefs: true
             show_symbol_type_heading: true
             show_symbol_type_toc: true
             show_if_no_docstring: false

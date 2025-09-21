@@ -18,6 +18,7 @@ These stages are executed sequentially, with each stage building on the data pro
 - **Flow**: The primary object that controls the execution of the pipeline. It defines the order of stages, manages connections, and handles error flow control.
   
   **Example Initialization**:
+
   ```python
   flow = Flow(
       defs=stages, 
@@ -35,6 +36,7 @@ These stages are executed sequentially, with each stage building on the data pro
 - **Datablock**: Represents an executable piece of the pipeline. Each `Datablock` corresponds to a specific stage and includes the logic to execute that stage, e.g., reading data, transforming it, or storing it.
   
   **Example**:
+
   ```python
   datablock = Datablock(
       conn=db_connection,
@@ -54,6 +56,7 @@ To configure a pipeline, you must define the following:
 - **Connection Configurations**: Each stage typically connects to a data source or target system. Connection details, such as credentials, endpoint URLs, and database configurations, are passed into the stages.
   
   **Example**:
+
   ```yaml
   stages:
     - kind: tap
@@ -79,11 +82,13 @@ To configure a pipeline, you must define the following:
 Once the pipeline is defined, you can execute it using the `Flow` class. This will initiate the stages in sequence and handle the transformation of data across all stages.
 
 - **Run Pipeline**: Execute the pipeline and get the final data.
+
   ```python
   flow.run()
   ```
 
 - **Access Output Data**: Once the pipeline runs, you can access the data produced by the final stage via the `df()` method.
+
   ```python
   result_df = flow.df()
   ```
@@ -93,6 +98,7 @@ Once the pipeline is defined, you can execute it using the `Flow` class. This wi
 AnkaFlow provides robust error handling mechanisms, ensuring that errors are managed appropriately during pipeline execution. The `FlowControl` configuration allows you to define how errors should be handled (e.g., fail or warn).
 
 Example of flow control:
+
 ```python
 flow_control = FlowControl(on_error="fail")
 ```
@@ -116,6 +122,7 @@ For reliable pipeline execution, it is important to test and debug each stage. A
 With these components and configurations, AnkaFlow allows you to define, execute, and manage data pipelines flexibly. It integrates various data sources and sinks, applies transformations, and enables efficient error handling, all while keeping the pipeline definitions clean and reusable.
 
 **Next Steps**:
+
 - Customize your pipeline based on the specific sources, transformations, and sinks relevant to your use case.
 - Explore advanced features like parallel pipeline execution and nested sub-pipelines for more complex workflows.
 

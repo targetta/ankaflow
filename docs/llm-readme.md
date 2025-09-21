@@ -73,9 +73,9 @@ Define a reusable LLM prompt using Jinja2 templating:
   kind: header
   prompt: &Prompt |
     You are a SQL query generator.
-    Schema: {{ schema_json }}
-    {% if relations_json %}Relations: {{ relations_json }}{% endif %}
-    Question: {{ user_prompt }}
+    Schema: << schema_json >>
+    <% if relations_json %>Relations: << relations_json >><% endif %>
+    Question: << user_prompt >>
 ```
 
 ### 5. Generate SQL via LLM
