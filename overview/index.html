@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
     
     
       
@@ -26,7 +26,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.e53b48f4.min.css">
       
       
 
@@ -165,6 +165,18 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/targetta/ankaflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    targetta/ankaflow
+  </div>
+</a>
+      </div>
+    
   </nav>
   
 </header>
@@ -198,6 +210,18 @@
     </a>
     AnkaFlow Documentation
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/targetta/ankaflow" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    targetta/ankaflow
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -744,6 +768,9 @@
                   
 
 
+  
+  
+
 
 <h1 id="technical-introduction-document-setting-up-and-configuring-a-data-pipeline-in-ankaflow">Technical Introduction Document: Setting Up and Configuring a Data Pipeline in AnkaFlow<a class="headerlink" href="#technical-introduction-document-setting-up-and-configuring-a-data-pipeline-in-ankaflow" title="Permanent link">&para;</a></h1>
 <p>This document provides a step-by-step guide for setting up and configuring a data pipeline using AnkaFlow. The pipeline framework facilitates seamless data transformations and efficient management of stages such as data sourcing (tap), transformations, and sink operations.</p>
@@ -759,8 +786,8 @@
 <ul>
 <li><strong>Flow</strong>: The primary object that controls the execution of the pipeline. It defines the order of stages, manages connections, and handles error flow control.</li>
 </ul>
-<p><strong>Example Initialization</strong>:
-  <code>python
+<p><strong>Example Initialization</strong>:</p>
+<p><code>python
   flow = Flow(
       defs=stages, 
       context=flowuct_context, 
@@ -778,8 +805,8 @@
 <p><strong>Datablock</strong>: Represents an executable piece of the pipeline. Each <code>Datablock</code> corresponds to a specific stage and includes the logic to execute that stage, e.g., reading data, transforming it, or storing it.</p>
 </li>
 </ul>
-<p><strong>Example</strong>:
-  <code>python
+<p><strong>Example</strong>:</p>
+<p><code>python
   datablock = Datablock(
       conn=db_connection,
       defs=datablock_def,
@@ -795,8 +822,8 @@
 <li><strong>Stages</strong>: Define the sequence of operations your pipeline will execute. Each stage must specify its type (<code>tap</code>, <code>transform</code>, <code>sink</code>) and the corresponding logic (e.g., queries, data manipulations).</li>
 <li><strong>Connection Configurations</strong>: Each stage typically connects to a data source or target system. Connection details, such as credentials, endpoint URLs, and database configurations, are passed into the stages.</li>
 </ul>
-<p><strong>Example</strong>:
-  <code>yaml
+<p><strong>Example</strong>:</p>
+<p><code>yaml
   stages:
     - kind: tap
       name: source_data
@@ -818,17 +845,15 @@
 <h4 id="4-executing-the-pipeline">4. <strong>Executing the Pipeline</strong><a class="headerlink" href="#4-executing-the-pipeline" title="Permanent link">&para;</a></h4>
 <p>Once the pipeline is defined, you can execute it using the <code>Flow</code> class. This will initiate the stages in sequence and handle the transformation of data across all stages.</p>
 <ul>
-<li>
-<p><strong>Run Pipeline</strong>: Execute the pipeline and get the final data.
-  <code>python
-  flow.run()</code></p>
-</li>
-<li>
-<p><strong>Access Output Data</strong>: Once the pipeline runs, you can access the data produced by the final stage via the <code>df()</code> method.
-  <code>python
-  result_df = flow.df()</code></p>
-</li>
+<li><strong>Run Pipeline</strong>: Execute the pipeline and get the final data.</li>
 </ul>
+<p><code>python
+  flow.run()</code></p>
+<ul>
+<li><strong>Access Output Data</strong>: Once the pipeline runs, you can access the data produced by the final stage via the <code>df()</code> method.</li>
+</ul>
+<p><code>python
+  result_df = flow.df()</code></p>
 <h4 id="5-error-handling-and-flow-control">5. <strong>Error Handling and Flow Control</strong><a class="headerlink" href="#5-error-handling-and-flow-control" title="Permanent link">&para;</a></h4>
 <p>AnkaFlow provides robust error handling mechanisms, ensuring that errors are managed appropriately during pipeline execution. The <code>FlowControl</code> configuration allows you to define how errors should be handled (e.g., fail or warn).</p>
 <p>Example of flow control:</p>
@@ -845,9 +870,11 @@
 </ul>
 <h4 id="8-conclusion">8. <strong>Conclusion</strong><a class="headerlink" href="#8-conclusion" title="Permanent link">&para;</a></h4>
 <p>With these components and configurations, AnkaFlow allows you to define, execute, and manage data pipelines flexibly. It integrates various data sources and sinks, applies transformations, and enables efficient error handling, all while keeping the pipeline definitions clean and reusable.</p>
-<p><strong>Next Steps</strong>:
-- Customize your pipeline based on the specific sources, transformations, and sinks relevant to your use case.
-- Explore advanced features like parallel pipeline execution and nested sub-pipelines for more complex workflows.</p>
+<p><strong>Next Steps</strong>:</p>
+<ul>
+<li>Customize your pipeline based on the specific sources, transformations, and sinks relevant to your use case.</li>
+<li>Explore advanced features like parallel pipeline execution and nested sub-pipelines for more complex workflows.</li>
+</ul>
 <p>This document serves as an introduction to configuring a basic pipeline setup in AnkaFlow. For more advanced configurations and features, refer to the detailed documentation on stages, handlers, and connections.</p>
 
 
@@ -902,7 +929,7 @@
       <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
