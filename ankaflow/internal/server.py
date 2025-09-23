@@ -7,7 +7,7 @@ import logging
 import random
 
 from ..models.configs import ConnectionConfiguration
-from .macros import Fn
+from .macros import iter_macros
 from . import errors as err
 
 log = logging.getLogger(__name__)
@@ -56,12 +56,10 @@ class DDB:
     async def _init_macros(self):
         """@private"""
         self.c.sql("CREATE SCHEMA IF NOT EXISTS Fn;")
-        attr = [it for it in Fn.__dict__.keys() if not it.startswith("__")]
         macros = []
 
-        for fn in attr:
-            f = getattr(Fn, fn)
-            macro = f"""CREATE OR REPLACE MACRO Fn.{fn}{f};"""
+        for name, body in iter_macros().items():
+            macro = f"""CREATE OR REPLACE MACRO Fn.{name}{body};"""
             macros.append(macro)
         stmt = " ".join(macros)
         self.c.sql(stmt)

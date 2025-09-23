@@ -1,5 +1,63 @@
 # ruff: noqa
+import typing as t
 
+# Global registry + lock
+_registered_macros: t.Dict[str, str] = {}
+
+
+def register_macro(name: str, definition: str) -> None:
+    """Register a new custom SQL macro.
+
+    This function adds a user-defined macro to the global registry so it will be
+    created in the `Fn` schema at pipeline initialization. Macros are defined by
+    their SQL body only (excluding the `CREATE MACRO` wrapper). For example:
+
+        ```
+        register_macro("answer", "() AS 42")
+        ```
+
+    After initialization, the mcro can be called in SQL as:
+
+        ```
+        SELECT Fn.answer();
+        ```
+
+    Rules and behavior:
+
+        * Built-in macros defined on the :class:`Fn` class cannot be overridden.
+          Attempting to register a macro with the same name will raise
+          :class:`ValueError`.
+        * The `definition` is automatically normalized by stripping whitespace
+          and removing any trailing semicolon.
+        * Registered macros are stored globally for the lifetime of the process.
+          Re-registering the same name will overwrite the previous definition.
+
+    Args:
+        name (str): Macro name (identifier only, without `Fn.` prefix).
+        definition (str): SQL macro body, starting with the parameter signature
+            (e.g. `"(x, y) AS x + y"`).
+
+    Raises:
+        ValueError: If the given name conflicts with a built-in macro.
+    """
+    builtins = {
+        k: getattr(Fn, k)
+        for k in Fn.__dict__.keys()
+        if not k.startswith("__")
+    }
+    if name in builtins:
+        raise ValueError(f"Macro '{name}' already exists.")
+    body = definition.strip().rstrip(";")
+    _registered_macros[name] = body
+
+def iter_macros() -> t.Dict[str, str]:
+    """Return all macros (built-in + dynamic)."""
+    builtins = {
+        k: getattr(Fn, k)
+        for k in Fn.__dict__.keys()
+        if not k.startswith("__")
+    }
+    return {**builtins, **_registered_macros}
 
 class Fn:
     """

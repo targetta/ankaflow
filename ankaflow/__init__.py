@@ -1,4 +1,5 @@
 from .core.flow import Flow, AsyncFlow, FlowControl
+from .internal.macros import register_macro
 
 from .models import (
     Stages,
@@ -29,4 +30,5 @@ __all__ = [
     "ClickhouseConfig",
     "BigQueryConfig",
     "BucketConfig",
+    "register_macro"
 ]
