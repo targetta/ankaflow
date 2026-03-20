@@ -9,7 +9,7 @@ from pydantic import (
     field_validator,
 )
 
-from ..common.types import ImmutableMap
+from ..common.security import BaseSafeDict
 
 from .components import Column
 from .enums import LogLevel
@@ -34,7 +34,7 @@ class Loadable(t.Protocol):
     def load(self) -> t.Any: ...
 
 
-class Variables(dict):
+class Variables(BaseSafeDict):
     """
     Variables is a `dict`-based collection
     storing arbitrary data under keys. Variable can be populated via:
@@ -64,7 +64,7 @@ class Variables(dict):
     """
 
 
-class FlowContext(ImmutableMap):
+class FlowContext(BaseSafeDict):
     """
     Context dictionary can be used to supply arbitrary data
     to pipeline that can be referenced in templates much

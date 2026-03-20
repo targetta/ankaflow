@@ -1,15 +1,18 @@
 import typing as t
-from jinja2 import Environment, BaseLoader
 import json
 import logging
 
 from .util import print_error
+from .security import StrictEnvironment, secure_context, jinja_sanitize
 
 log = logging.getLogger(__name__)
 
 
 class Renderer:
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        **kwargs
+    ):
         self.kwargs = kwargs
 
     def render_string(
@@ -20,24 +23,29 @@ class Renderer:
     ) -> t.Any:
         if not isinstance(string, str):
             return string
+        safe_kwargs = {}
+        for k in self.kwargs:
+            if k.startswith("__"):
+                safe_kwargs[k] = None
+            else:
+                safe_kwargs[k] = jinja_sanitize(self.kwargs[k])
 
-        jenv = Environment(
-            loader=BaseLoader,  # type: ignore
-            variable_start_string="<<",
-            variable_end_string=">>",
-            block_start_string="<%",
-            block_end_string="%>",
-            comment_start_string="<#",
-            comment_end_string="#>",
-        )
+        with secure_context():
+            env = StrictEnvironment(
+                variable_start_string="<<",
+                variable_end_string=">>",
+                block_start_string="<%",
+                block_end_string="%>",
+                comment_start_string="<#",
+                comment_end_string="#>",
+            )
+            # Register filters
+            env.filters["bool"] = lambda v: bool(v)
+            env.filters["int"] = lambda v: int(v)
+            env.filters["float"] = lambda v: float(v)
 
-        # Register filters
-        jenv.filters["bool"] = lambda v: bool(v)
-        jenv.filters["int"] = lambda v: int(v)
-        jenv.filters["float"] = lambda v: float(v)
-
-        tmpl = jenv.from_string(string)
-        rendered = tmpl.render(**self.kwargs).strip()
+            tmpl = env.from_string(string)
+            rendered = tmpl.render(**safe_kwargs).strip()
 
         if squash_whitespace:
             rendered = " ".join(rendered.split())
