@@ -7,14 +7,14 @@ from .internal.macros import register_macro
 from .models import (
     Stages,
     ConnectionConfiguration,
-    Variables,
-    FlowContext,
     S3Config,
     GSConfig,
     ClickhouseConfig,
     BigQueryConfig,
     BucketConfig,
 )
+
+from .common.types import FlowContext, Variables
 
 from .errors import FlowRunError, FlowError
 

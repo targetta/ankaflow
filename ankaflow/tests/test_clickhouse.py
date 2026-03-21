@@ -8,7 +8,7 @@ from ..connections import clickhouse as ch
 from ..connections import errors as e
 from ..models.connections import ClickhouseConnection
 from ..models.configs import ConnectionConfiguration, ClickhouseConfig
-from ..models.core import (
+from ..common.types import (
     FlowContext,
     Variables,
 )

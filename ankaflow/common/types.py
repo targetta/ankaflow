@@ -1,5 +1,7 @@
 import typing as t
 
+from .security import BaseSafeDict
+
 
 class StringDict(dict[str, str]):
     """A dictionary that coerces all values to strings.
@@ -142,3 +144,67 @@ class ImmutableMap:
 
     def get(self, key: str, default: t.Any = None) -> t.Any:
         return self._data.get(key, default)
+
+class Variables(BaseSafeDict):
+    """
+    Variables is a `dict`-based collection
+    storing arbitrary data under keys. Variable can be populated via:
+
+    - Dictionary passed to pipeline:
+      `Flow(defs, context, variables={'foo': 'bar'})`
+    - Sink operation:
+
+            - kind: sink\n
+                name: my_sink\n
+                connection:\n
+                    kind: Variable\n
+                    locator: variable_name
+
+      This step will place a list of records from preceding step in
+      variables as `{'variable_name': t.List[dict]}`
+
+    In most cases sainking to variable is not needed as all preceding stages
+    in a pipeline can be referenced via `name`. Sinking to variable is
+    useful when you need to share data with subpipeline.
+
+    Special variable is `loop_control` which is populated
+    dynamically from previous step and current stage type is pipeline.
+    In case previous step generates multiple records then the new pipeline
+    is called for each record, and control variable holds a `dict`
+    representing the current record.
+    """
+
+
+class FlowContext(BaseSafeDict):
+    """
+    Context dictionary can be used to supply arbitrary data
+    to pipeline that can be referenced in templates much
+    much like variables with the difference that they cannot
+    be modified at runtime.
+
+    Context can be initiated via dictionary:
+
+    `context = FlowContext(**{'foo':'Bar'}])`
+
+    Items can be reference using both bracket and dot notation:
+
+    `context.foo == context['foo'] == 'Bar'`
+
+    """
+
+    def __init__(self, data=None, **kwargs):
+        self._is_fozen=False
+        super().__init__(data, **kwargs)
+        self._is_fozen=True
+
+    def __setitem__(self, key, value):
+        if self._is_fozen:
+            raise TypeError(f"'{self.__class__.__name__}' is immutable. Changes are not allowed after initialization.")  # noqa: E501
+        super().__setitem__(key, value)
+            
+
+    def update(self, *args, **kwargs):
+        # Prevent the base class update from working
+        if self._is_fozen:
+            raise TypeError(f"'{self.__class__.__name__}' is immutable.")
+        super().update(*args, **kwargs)

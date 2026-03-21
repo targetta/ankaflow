@@ -9,7 +9,7 @@ from pydantic import (
     field_validator,
 )
 
-from ..common.security import BaseSafeDict
+from ..common.types import FlowContext
 
 from .components import Column
 from .enums import LogLevel
@@ -32,56 +32,6 @@ from .connections import (
 @t.runtime_checkable
 class Loadable(t.Protocol):
     def load(self) -> t.Any: ...
-
-
-class Variables(BaseSafeDict):
-    """
-    Variables is a `dict`-based collection
-    storing arbitrary data under keys. Variable can be populated via:
-
-    - Dictionary passed to pipeline:
-      `Flow(defs, context, variables={'foo': 'bar'})`
-    - Sink operation:
-
-            - kind: sink\n
-                name: my_sink\n
-                connection:\n
-                    kind: Variable\n
-                    locator: variable_name
-
-      This step will place a list of records from preceding step in
-      variables as `{'variable_name': t.List[dict]}`
-
-    In most cases sainking to variable is not needed as all preceding stages
-    in a pipeline can be referenced via `name`. Sinking to variable is
-    useful when you need to share data with subpipeline.
-
-    Special variable is `loop_control` which is populated
-    dynamically from previous step and current stage type is pipeline.
-    In case previous step generates multiple records then the new pipeline
-    is called for each record, and control variable holds a `dict`
-    representing the current record.
-    """
-
-
-class FlowContext(BaseSafeDict):
-    """
-    Context dictionary can be used to supply arbitrary data
-    to pipeline that can be referenced in templates much
-    much like variables with the difference that they cannot
-    be modified at runtime.
-
-    Context can be initiated via dictionary:
-
-    `context = FlowContext(**{'foo':'Bar'}])`
-
-    Items can be reference using both bracket and dot notation:
-
-    `context.foo == context['foo'] == 'Bar'`
-
-    """
-
-    pass
 
 
 class SchemaItem(BaseModel):

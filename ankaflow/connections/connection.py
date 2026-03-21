@@ -11,6 +11,7 @@ from ..common.util import (
     ConfigResolver,
 )
 from .. import models as m
+from ..common.types import Variables
 from ..models.configs import ConnectionConfiguration
 from ..models.connections import PhysicalConnection, VersionedConnection
 from .. import errors as e
@@ -222,7 +223,7 @@ class Connection:
         name: str,
         connection: UnionConnection,
         context: m.FlowContext,
-        variables: m.Variables,
+        variables: Variables,
         logger: logging.Logger = None,  # type: ignore[assignment]
     ) -> None:
         self.c = duck

@@ -15,6 +15,7 @@ from ..models.components import Column, Columns
 from ..models.configs import ConnectionConfiguration, BucketConfig
 from ..connections.connection import Schema
 from ..internal.server import DDB
+from ..common.types import Variables, FlowContext
 
 
 class TestDeltatable(unittest.IsolatedAsyncioTestCase):
@@ -37,8 +38,8 @@ class TestDeltatable(unittest.IsolatedAsyncioTestCase):
         self.instance = Deltatable.__new__(Deltatable)
         self.instance.conn = self.mock_conn
         self.instance.name = "test_table"
-        self.instance.ctx = m.FlowContext()
-        self.instance.vars = m.Variables()
+        self.instance.ctx = FlowContext()
+        self.instance.vars = Variables()
         self.instance.delta_opts = {}
         self.instance.log = MagicMock()
         self.instance.locate = lambda use_wildcard=False: self.path  # type: ignore

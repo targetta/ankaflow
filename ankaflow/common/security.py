@@ -12,6 +12,7 @@ is_in_sandbox = ContextVar("is_in_sandbox", default=False)
 _real_getenv = os.getenv
 _real_environ_obj = os.environ
 
+
 def guarded_getenv(key, default=None):
     """Intercepts os.getenv calls."""
     if is_in_sandbox.get():
@@ -19,11 +20,13 @@ def guarded_getenv(key, default=None):
         return default
     return _real_getenv(key, default)
 
+
 class GuardedEnviron(dict):
     """
     A proxy for os.environ that blocks access when the sandbox is active.
-    We inherit from dict to ensure compatibility with libraries expecting a mapping.
+    We inherit from dict to ensure compatibility with libs expecting a mapping.
     """
+
     def __init__(self, original_environ):
         self._raw = original_environ
 
@@ -47,9 +50,11 @@ class GuardedEnviron(dict):
             return "{'REDACTED': 'In Sandbox Context'}"
         return repr(self._raw)
 
+
 # --- THE INSTALLER ---
 
 _is_patched = False
+
 
 def install_environment_protection():
     """
@@ -64,11 +69,12 @@ def install_environment_protection():
     os.getenv = guarded_getenv
 
     # 2. Patch the environ object
-    # Instead of class-patching __getitem__, we replace the instance 
+    # Instead of class-patching __getitem__, we replace the instance
     # with our Guarded wrapper.
     os.environ = GuardedEnviron(_real_environ_obj)  # noqa: B003
-    
+
     _is_patched = True
+
 
 @contextmanager
 def secure_context():
@@ -84,12 +90,12 @@ def secure_context():
     finally:
         is_in_sandbox.reset(token)
 
+
 class BaseSafeDict:
     def __init__(self, data=None, **kwargs):
-        # 1. Merge standard dict input and keyword arguments
-        self._raw_data = data or {}
-        if kwargs:
-            self._raw_data.update(kwargs)
+        self._raw_data = {}
+        self.update(data or {})
+        self.update(kwargs)
 
     def __str__(self):
         return self._raw_data.__str__()
@@ -101,7 +107,9 @@ class BaseSafeDict:
         val = self._raw_data[key]
         # CONVENTION: Single underscore = Logic-Only
         if str(key).startswith("__") and str(key).endswith("__"):
-            raise KeyError(f"Access to internal attribute '{key}' is forbidden.")
+            raise KeyError(
+                f"Access to internal attribute '{key}' is forbidden."
+            )
         return val
 
     def __getattr__(self, key):
@@ -109,11 +117,38 @@ class BaseSafeDict:
             return self.__getitem__(key)
         except KeyError:
             raise AttributeError(key)
-    
+
     def __contains__(self, key):
         """Enables 'if key in Variables' logic in templates."""
         return key in self._raw_data
-    
+
+    def __setitem__(self, key, value):
+        # 1. Dunder-Gate: No entry for internal attributes
+        if str(key).startswith("__") and str(key).endswith("__"):
+            # TODO: warnings.warn(f"Key '{key}' is a dunder and will be
+            # inaccessible in templates.", UserWarning)
+            pass
+
+        # 2. Strict Recursive Wrapping: Only for dicts/lists
+        if isinstance(value, dict) and not isinstance(value, BaseSafeDict):
+            value = self.__class__(value)
+        elif isinstance(value, list):
+            value = [
+                (
+                    self.__class__(v)
+                    if isinstance(v, dict) and not isinstance(v, BaseSafeDict)
+                    else v
+                )
+                for v in value
+            ]
+
+        self._raw_data[key] = value
+
+    def update(self, *args, **kwargs):
+        data = dict(*args, **kwargs)
+        for k, v in data.items():
+            self[k] = v
+
     def get(self, key, default=None):
         """Dict-like get that respects the Shadow Metadata masking."""
         try:
@@ -125,15 +160,21 @@ class BaseSafeDict:
             return default
 
     def to_dict(self):
-        """
-        Unwraps for JSON serialization.
-        """
-        # Strip only dunders (system noise like __typename__)
-        return {
-            k: (v.to_dict() if hasattr(v, "to_dict") else v)
-            for k, v in self._raw_data.items()
-            if not str(k).startswith("__")
-        }
+        """Unwraps only our own containers for JSON export."""
+        out = {}
+        for k, v in self._raw_data.items():
+            if str(k).startswith("__") and str(k).endswith("__"):
+                continue
+
+            if isinstance(v, BaseSafeDict):
+                out[k] = v.to_dict()
+            elif isinstance(v, list):
+                out[k] = [
+                    i.to_dict() if isinstance(i, BaseSafeDict) else i for i in v
+                ]
+            else:
+                out[k] = v
+        return out
 
 
 class StrictEnvironment(SandboxedEnvironment):
@@ -159,7 +200,9 @@ class StrictEnvironment(SandboxedEnvironment):
         return super().is_safe_attribute(obj, attr, value)
 
 
-def jinja_sanitize(obj: t.Any, ):
+def jinja_sanitize(
+    obj: t.Any,
+):
     """Recursively wraps data in BaseSafeDict proxies."""
     if hasattr(obj, "model_dump") and callable(obj.model_dump):
         obj = obj.model_dump()

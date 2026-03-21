@@ -1,5 +1,6 @@
 from .components import Column, Columns
-from .core import Stages, FlowContext, Variables, Stage
+from .core import Stages, Stage
+from ..common.types import FlowContext, Variables
 
 from .configs import (
 ConnectionConfiguration,

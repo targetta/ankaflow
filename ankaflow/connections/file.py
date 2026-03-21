@@ -6,6 +6,8 @@ import json
 from io import StringIO
 from pathlib import Path
 
+from ..common.security import BaseSafeDict
+
 from .connection import Connection
 from .. import models as m
 from ..internal import CatalogException
@@ -15,17 +17,24 @@ log = logging.getLogger(__name__)
 
 class Variable(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        try:
-            var = self.vars[self.conn.locator]
-        except KeyError:
-            var = None
-        var_str = json.dumps(var)
+        var = self.vars.get(self.conn.locator)
+        if isinstance(var, BaseSafeDict):
+            data = var.to_dict()
+        elif isinstance(var, list):
+            # If the sink stored a list of records, we unwrap each safe record
+            data = [
+                i.to_dict() if isinstance(i, BaseSafeDict) else i for i in var
+            ]
+        else:
+            data = var
+        var_str = json.dumps(data)
         await self.c.read_json(StringIO(var_str), self.name, {})
 
     async def sink(self, from_name: str):
         rel = await self.c.sql(f'SELECT * FROM "{from_name}"')
         df = await rel.df()
-        self.vars[self.conn.locator] = df.to_dict(orient="records")
+        data = df.to_json(orient="records")
+        self.vars[self.conn.locator] = json.loads(data)
 
 
 class Parquet(Connection):
