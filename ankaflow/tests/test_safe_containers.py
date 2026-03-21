@@ -64,3 +64,25 @@ class TestRenderer(unittest.TestCase):
         self.vars["serialized"] = json.loads(payload)
         self.assertIsInstance(self.vars.serialized[1], BaseSafeDict)
 
+    def test_dict_look(self):
+        result = self.vars.look("foo.bar")
+        self.assertEqual(result, 3)
+
+    def test_look_nested_list(self):
+        # Simulate a SQL 'MAX' result: a list containing one dict
+        self.vars["MaxTime"] = [{"x": "2023-01-01"}]
+        
+        # Scout the value out
+        result = self.vars.look("MaxTime[0].x")
+        self.assertEqual(result, "2023-01-01")
+        
+        # Verify it handles missing paths gracefully (jmespath returns None)
+        self.assertIsNone(self.vars.look("NonExistent.key"))
+
+    def test_look_in_list(self):
+        # Simulate a SQL 'MAX' result: a list containing one dict
+        self.vars["Values"] = [{"x": 1},{"x": 2}]
+        
+        # Scout the value out
+        result = self.vars.look("Values[*].x")
+        self.assertEqual(result, [1,2])

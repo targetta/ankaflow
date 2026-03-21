@@ -4,6 +4,7 @@ from contextvars import ContextVar
 from contextlib import contextmanager
 from jinja2.sandbox import SandboxedEnvironment
 import typing as t
+import jmespath
 
 
 # The 'Air-gap' switch: True only during a template render
@@ -175,6 +176,32 @@ class BaseSafeDict:
             else:
                 out[k] = v
         return out
+    
+    # Make more compatible - full support for jmepath protocol
+    def keys(self):
+        return self._raw_data.keys()
+
+    def values(self):
+        # Note: These values might be BaseSafeDicts, which is fine!
+        return self._raw_data.values()
+
+    def items(self):
+        return self._raw_data.items()
+        
+    def __iter__(self):
+        return iter(self._raw_data)
+
+    def __len__(self):
+        return len(self._raw_data)
+    
+    def look(self, expression: str):
+        """Allow JMESPath searching across the container."""
+        result = jmespath.search(expression, data=self)
+        
+        # If the result is a dict/list, wrap it back so it stays "Safe"
+        if isinstance(result, (dict, list)):
+            return self.__class__({"_tmp": result})["_tmp"]
+        return result
 
 
 class StrictEnvironment(SandboxedEnvironment):
