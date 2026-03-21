@@ -1,4 +1,7 @@
 # Changelog:
+## [0.5.1] - 2026-03-21
+### Fixes
+* Security tests
 
 ## [0.5.0] - 2026-03-21
 This release introduces a multi-layered security architecture designed to establish a **"Logical Air-gap"** between template execution and the host system. These changes prevent Remote Code Execution (RCE) and protect sensitive environment data from leaking through the rendering engine.

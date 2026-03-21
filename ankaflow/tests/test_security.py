@@ -2,6 +2,9 @@ import unittest
 import os
 
 from ..common.renderer import Renderer
+from ..common.security import install_environment_protection
+
+install_environment_protection()
 
 
 class TestRendererSecurity(unittest.TestCase):
@@ -47,7 +50,7 @@ class TestRendererSecurity(unittest.TestCase):
 
         # Direct dunder access
         result = renderer.render_string("<< __ver >>")
-        self.assertEqual(result, "")
+        self.assertIsNone(result)
 
         # Public access still works
         result = renderer.render_string("<< public_var >>")
