@@ -1,4 +1,14 @@
 # Changelog:
+## [0.6.0] - 2026-03-21
+
+* Enhanced `BaseSafeDict` with a recursive `__setitem__` engine that automatically upgrades nested dicts/lists to protected containers on assignment.
+
+* Added a 'frozen' state to `FlowContext` to prevent runtime modification   of pipeline context after initialization. - Refactor tap/sink logic in `Variable` connections to safely unwrap   `BaseSafeDict` records during database serialization.
+
+* Updated `Variable.sink` to use a `to_json` -> `json.loads` round-trip.
+
+* Added JMESPath 'look' helper and Mapping protocol to `BaseSafeDict`
+
 ## [0.5.1] - 2026-03-21
 ### Fixes
 * Security tests
