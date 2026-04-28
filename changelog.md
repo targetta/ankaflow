@@ -1,4 +1,10 @@
 # Changelog:
+## [0.7.2] - 2026-04-28
+
+### Fixes
+* Pass custom OAuth header to Auth handler if present and handle missing headers gracefully to 401 resolution.
+
+
 ## [0.7.0] - 2026-04-27
 
 ### Breaking Changes

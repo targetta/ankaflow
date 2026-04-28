@@ -85,6 +85,9 @@ class OAuth2Auth(httpx.Auth):
         return self._resolve_provider()
 
     def _set_headers(self, request: httpx.Request):
+        # Do not set headers if AT missing
+        if not self.current.access_token:
+            return request
         if self.header:
             request.headers[self.header] = self.current.access_token
         else:
@@ -96,11 +99,19 @@ class OAuth2Auth(httpx.Auth):
     def auth_flow(
         self, request: httpx.Request
     ) -> t.Generator[httpx.Request, httpx.Response, None]:
-        # 1. Initial attempt
-        response = yield self._set_headers(request)
-        # 2. Reactive refresh on 401
-        if response.status_code == 401:
+        # 1. Ensure we have a token to start with
+        if not self.current.access_token:
             self._refresh_and_update()
+        
+        # 2. Initial Attempt
+        response = yield self._set_headers(request)
+
+        # 3. If we get a 401, the token expired during the flow
+        if response.status_code == 401:
+            # Re-fetch (this updates refresh_token in the model too)
+            self._refresh_and_update()
+            
+            # 4. Update headers with the NEW token and yield again
             yield self._set_headers(request)
 
     def _refresh_and_update(self):
@@ -278,9 +289,10 @@ class RestClient:
             raise ValueError("Invalid Auth value")
 
         if self.config.auth.method == enums.AuthType.OAUTH2:
-            return method(
+            return OAuth2Auth(
                 provider=self.config.auth.provider,
                 _oauth=self._oauth,
+                oauth_header=self.config.auth.oauth_header
             )
 
         return method(**vars)
