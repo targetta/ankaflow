@@ -12,6 +12,7 @@ from .models import (
     ClickhouseConfig,
     BigQueryConfig,
     BucketConfig,
+    OAuth2Provider
 )
 
 from .common.types import FlowContext, Variables
@@ -37,6 +38,7 @@ __all__ = [
     "ClickhouseConfig",
     "BigQueryConfig",
     "BucketConfig",
+    "OAuth2Provider",
     "register_macro",
     "secure_context"
 ]

@@ -10,7 +10,7 @@ import sys
 
 from ...models.connections import RestConnection
 from ...models import rest as rst
-from ...models import enums
+from ...models import enums, OAuth2Provider
 from .common import MaterializerProtocol, Materializer, MaterializeError
 from ..connection import Connection
 from ...common.util import null_logger, print_error
@@ -29,8 +29,9 @@ log = logging.getLogger("buimatic")
 
 
 class ResponseHandler:
-    def __init__(self, request: rst.Request, id: str,
-                 logger: logging.Logger = None):
+    def __init__(
+        self, request: rst.Request, id: str, logger: logging.Logger = None
+    ):
         self.id = id
         self.req = request
         self.res = request.response
@@ -137,7 +138,7 @@ class URLPollingHandler(ResponseHandler):
         if self.res.handler.ready_status:
             completed = jmespath.search(self.res.handler.ready_status, data)
             self.log.debug(
-            f"Waiting for '{self.res.handler.ready_status}', current: {completed}"  # noqa: E501
+                f"Waiting for '{self.res.handler.ready_status}', current: {completed}"  # noqa: E501
             )
         self.wait = self.wait * 1.5 if self.wait else 1
         return (url, completed)
@@ -180,6 +181,7 @@ class RestApi:
         client: rst.RestClientConfig,
         materializer: MaterializerProtocol,
         logger: logging.Logger = None,
+        oauth_keyring: t.List[OAuth2Provider] | None = None,
     ):
         """
         Creates new REST API.
@@ -197,6 +199,7 @@ class RestApi:
         self._client: RestClient = None
         self.mat = materializer
         self.log = logger or null_logger()
+        self._oauth_keyring = oauth_keyring
 
     def create_client(self):
         if self._client:
@@ -204,7 +207,8 @@ class RestApi:
             if self._client.closed:
                 self._client.connect()
             return
-        self._client = RestClient(self.confg).connect()
+        self._client = RestClient(self.confg,
+                                  oauth_keyring=self._oauth_keyring).connect()
 
     async def handle_response(self, resp: RestResponse):
         # TODO: Rework the handling logic
@@ -289,7 +293,9 @@ class Rest(Connection):
             self.schema_,
             self.conn.fields,
         )
-        self.api = RestApi(self.conn.client, mat, logger=self.log)
+        self.api = RestApi(self.conn.client, mat,
+                           logger=self.log,
+                           oauth_keyring=self._oauth_keyring)
         self.request = self.conn.request
         self.log = self.log
 

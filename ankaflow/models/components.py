@@ -48,4 +48,3 @@ class Columns(RootModel[t.List[Column]]):
         for item in self.root:
             out.append(f"- name: {item.name}\n  type: {item.type}")
         return "\n".join(out)
-

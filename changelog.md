@@ -1,4 +1,17 @@
 # Changelog:
+## [0.7.0] - 2026-04-27
+
+### Breaking Changes
+* **Auth Renaming:** The legacy `oauth2` method (which simply injected a static Bearer token) has been renamed to `bearer`. Users relying on static token injection should update their YAML `method` from `oauth2` to `bearer`.
+* **New `oauth2` Implementation:** The `oauth2` method is now reserved for the stateful, auto-refreshing OAuth2/RFC 8693 engine. This requires an `OAuth2Provider` keyring to be passed to the `Flow`, or inline definition under `provider` YAML parameter.
+
+### New Features
+* **Managed OAuth2:** Added full support for standard OAuth2 `refresh_token` flows and RFC 8693 `token-exchange`.
+* **Self-Healing Auth:** `OAuth2Auth` now automatically handles 401 challenges, including transient error retries (5xx, 429, timeouts).
+* **Persistence Hooks:** Added `on_token_refresh` and `on_refresh_fail` callbacks to `OAuth2Provider` for seamless framework integration and UI notification.
+* **Header Flexibility:** Added `oauth_header` support to `RestAuth` for providers requiring non-standard headers.
+
+
 ## [0.6.0] - 2026-03-21
 
 * Enhanced `BaseSafeDict` with a recursive `__setitem__` engine that automatically upgrades nested dicts/lists to protected containers on assignment.

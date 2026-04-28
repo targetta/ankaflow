@@ -54,6 +54,9 @@ class BaseStageHandler:
         self.ctx = block.ctx
         self.vars = block.vars
         self._connection: c.Connection | None = None
+        self._oauth_keyring: t.List[m.OAuth2Provider] | None = (
+            block.oauth_keyring
+        )
 
     async def _show(self, limit: t.Union[int, float]) -> str:
         """Shared helper to display preview of a table/view."""
@@ -102,6 +105,7 @@ class BaseStageHandler:
             self.ctx,
             self.vars,
             logger=self.log,
+            oauth_keyring=self._oauth_keyring,
         )
 
     async def execute(self) -> t.Union[str, None]:
@@ -150,6 +154,7 @@ class PipelineStageHandler(BaseStageHandler):
                     logger=db.log,
                     conn=db.idb,
                     log_context=item,
+                    oauth_keyring=self._oauth_keyring,
                 )
                 try:
                     await flow.run()
@@ -179,6 +184,7 @@ class PipelineStageHandler(BaseStageHandler):
                 variables=db.vars,
                 logger=db.log,
                 conn=db.idb,
+                oauth_keyring=self._oauth_keyring,
             )
             await flow.run()
             return None
@@ -341,9 +347,7 @@ class InternalStageHandler(BaseStageHandler):
                 )
                 self.log.info(await self._show(src.show))
             except AttributeError:
-                self.log.info(
-                    dd(f"{src.kind} > {src.name}:\nNothing to show")
-                )
+                self.log.info(dd(f"{src.kind} > {src.name}:\nNothing to show"))
         return name
 
 
@@ -394,6 +398,7 @@ class StageBlock:
         logger: t.Optional[logging.Logger] = None,
         prevous_stage: t.Optional[str] = None,
         log_context: t.Optional[str] = None,
+        oauth_keyring: t.Optional[t.List[m.OAuth2Provider]] = None,
     ) -> None:
         """
         Args:
@@ -419,6 +424,7 @@ class StageBlock:
         self.defs = defs
         self.prev = prevous_stage
         self.log_context = log_context
+        self.oauth_keyring = oauth_keyring
 
     def prepare(self, src: m.Stage) -> m.Stage:
         """
@@ -516,6 +522,7 @@ class AsyncFlow:
         conn: "DDB" = None,
         flow_control: "FlowControl" = None,
         log_context: str = None,
+        oauth_keyring: t.List[m.OAuth2Provider] | None = None,
     ) -> None:
         """
         Args:
@@ -542,6 +549,7 @@ class AsyncFlow:
         self.logger = logger
         self.flow_control = flow_control or FlowControl()
         self.log_context = log_context
+        self.oauth_keyring: t.Optional[t.List[m.OAuth2Provider]] = oauth_keyring
         self.idb: t.Optional["DDB"] = conn
 
     @property
@@ -595,6 +603,7 @@ class AsyncFlow:
                     logger=self.log,
                     prevous_stage=self.lastname,  # type: ignore[assignment]
                     log_context=self.log_context,
+                    oauth_keyring=self.oauth_keyring,
                 )
                 self.lastname = await stage.do() or self.lastname
             except Exception as ex:
@@ -694,6 +703,7 @@ class Flow:
         conn: duckdb.DuckDBPyConnection = None,
         flow_control: FlowControl = None,
         log_context: str = None,
+        oauth_keyring: t.List[m.OAuth2Provider] | None = None,
     ) -> None:
         """
         Args:
@@ -710,6 +720,8 @@ class Flow:
                 Defaults to None.
             conn (DuckDBPyConnection): Existing DuckDB connection. If not set
                 new connection will be created.
+            oauth_keyring (List[Oauth2Provider]): List of OAuth2 configurations.
+                Required for OAuth2/M2M token exchange in HTTP/OAuth2 scenarios.
         """
         self.flow = AsyncFlow(
             defs,
@@ -720,6 +732,7 @@ class Flow:
             conn=conn,
             flow_control=flow_control or FlowControl(),
             log_context=log_context,
+            oauth_keyring=oauth_keyring,
         )
 
     @property

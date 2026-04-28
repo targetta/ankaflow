@@ -46,6 +46,7 @@ class AuthType(Enum):
     BASIC = "basic"
     DIGEST = "digest"
     HEADER = "header"
+    BEARER = "bearer"
     OAUTH2 = "oauth2"
 
 

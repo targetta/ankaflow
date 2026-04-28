@@ -1,5 +1,10 @@
 import typing as t
-from pydantic import BaseModel, field_validator, Field as PydanticField
+from pydantic import (
+    BaseModel,
+    field_validator,
+    Field as PydanticField,
+    ConfigDict
+)
 
 from .enums import (
     AuthType,
@@ -12,13 +17,71 @@ from .enums import (
 from ..common.types import StringDict
 
 
-class ResponseHandlerTypes:
-    """"""
+RefreshSuccessCallable = t.Callable[[str, dict], None]
+RefreshFailCallable = t.Callable[[str, dict], None]
 
-    BASIC = "Basic"
-    PAGINATOR = "Pagination"
-    URLPOLLING = "URLPolling"
-    STATEPOLLING = "StatePolling"
+
+class OAuth2Config(BaseModel):
+    authorize_url: str
+    access_token_url: str
+    client_id: str
+    client_secret: str
+
+    # --- RFC 8693 Standard Exchange Fields ---
+    grant_type: str = "urn:ietf:params:oauth:grant-type:token-exchange"
+    """The grant type for the credential exchange (default: Token Exchange)."""
+    subject_token_type: str = "urn:ietf:params:oauth:token-type:id_token"
+    """The identifier for the type of security token being provided."""
+    requested_token_type: str = "urn:ietf:params:oauth:token-type:access_token"
+    """The type of security token being requested from the provider."""
+    subject_token: str | None = None
+    """A security token that represents the identity of the party
+    on whose behalf the request is being made."""
+    extra_params: dict = PydanticField(default_factory=dict)
+    """
+    Arbitrary key-value pairs for vendor-specific extensions 
+    (e.g., {'resource': 'https://analysis.windows.net/powerbi/api'}).
+    """
+
+
+class OAuth2Provider(BaseModel):
+    """
+    Implements standard OAuth2 authorization and token exchange flows.
+
+    Retry Policy: "The auth mechanism automatically retries transient errors 
+    (5xx, 429, and timeouts) up to 3 times before triggering on_refresh_fail."
+    """
+
+    name: str
+    """Unique identifier used in YAML connection 'provider' field."""
+
+    config: OAuth2Config
+
+    access_token: str | None = None
+    """Current valid access token (Bearer).
+    In the event token exchange fails this will be set to None immediately.
+    """
+    refresh_token: str | None = None
+    """Long-lived token used to obtain new access tokens."""
+    subject_token: str | None = None
+    """The session-specific identity token used for RFC 8693 exchanges."""
+
+    on_token_refresh: t.Optional[RefreshSuccessCallable] = None
+    """
+    Optional callback triggered on successful token update. 
+    (eg storing in secrets manager)
+
+    Signature: (name: str, data: dict) -> None
+    """
+    on_refresh_fail: t.Optional[RefreshFailCallable] = None
+    """
+    Callback triggered when refresh fails (4xx/5xx or malformed response).
+    (eg notifying UI or invalidating old tokens)
+    
+    Signature: (name: str, error_context: dict) -> None
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RestAuth(BaseModel):
@@ -31,7 +94,18 @@ class RestAuth(BaseModel):
 
     method: AuthType
     """Specifies authentiation type."""
-    values: StringDict
+
+    provider: str | OAuth2Provider | None = None
+    """
+    Either a string (lookup key for the keyring) or an inline 
+    OAuth2Provider definition.
+    """
+    oauth_header: str | None = None
+    """ Some providers use different header pattern than Authorization-Bearer.
+    If set then auth mechanism will user oauth_header=token
+    """
+
+    values: StringDict | dict = PydanticField(default_factory=dict)
     """Mapping of parameter names and values.
     
         {
@@ -95,6 +169,15 @@ class RestErrorHandler(BaseModel):
     JMESPath expression to extract error message from respose.
     If omitted entire response will be included in error.
     """
+
+
+class ResponseHandlerTypes:
+    """"""
+
+    BASIC = "Basic"
+    PAGINATOR = "Pagination"
+    URLPOLLING = "URLPolling"
+    STATEPOLLING = "StatePolling"
 
 
 class BasicHandler(BaseModel):

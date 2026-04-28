@@ -5,8 +5,10 @@ import urllib.parse
 from asyncio import sleep
 import logging
 
+
 from ...models import rest as rst
 from ...models import enums as enums
+from ...models import OAuth2Provider
 from . import common
 from ...common.util import print_error
 
@@ -139,7 +141,10 @@ class RestClient:
         self,
         clientconfig: rst.RestClientConfig,
         logger: t.Optional[logging.Logger] = None,
+        oauth_keyring: t.Optional[t.List[OAuth2Provider]] = None
     ) -> None:
+        self._oauth_keyring = None
+        _ = oauth_keyring
         self.config: rst.RestClientConfig = clientconfig
         self.base_url: str = clientconfig.base_url
         self._request: t.Optional[rst.Request] = None
@@ -187,10 +192,12 @@ class RestClient:
             )
         elif self.config.auth.method == enums.AuthType.HEADER:
             self._headers.update(vars)
-        elif self.config.auth.method == enums.AuthType.OAUTH2:
+        elif self.config.auth.method == enums.AuthType.BEARER:
             self._headers["Authorization"] = f"Bearer {vars['token']}"
         elif self.config.auth.method == enums.AuthType.DIGEST:
             raise NotImplementedError("Digest auth not supported")
+        elif self.config.auth.method == enums.AuthType.OAUTH2:
+            raise NotImplementedError("Oauth2 auth not supported")
 
     def url(self) -> str:
         """Constructs full request URL with query params."""

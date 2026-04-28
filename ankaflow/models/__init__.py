@@ -1,5 +1,6 @@
 from .components import Column, Columns
 from .core import Stages, Stage
+from .rest import OAuth2Provider
 from ..common.types import FlowContext, Variables
 
 from .configs import (
@@ -57,4 +58,5 @@ __all__ = [
     "CustomConnection",
     "RestConnection",
     "SQLGenConnection",
+    "OAuth2Provider",
 ]

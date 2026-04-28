@@ -1,6 +1,7 @@
 # TODO: Fix pylance warnings
 # type: ignore
 import typing as t
+import time
 import httpx
 from asyncio import sleep
 import logging
@@ -13,9 +14,26 @@ from . import common
 # from ...models import models as m
 from ...models import rest as rst
 from ...models import enums
+from ...models import OAuth2Provider
 from ...common.util import print_error
 
 log = logging.getLogger(__name__)
+
+
+class BasicAuthShim(httpx.BasicAuth):
+    def __init__(self, **kwargs):
+        # BasicAuth expects (username, password)
+        # We assume your 'vars' from YAML has these keys
+        super().__init__(
+            username=kwargs.get("username"), password=kwargs.get("password")
+        )
+
+
+class DigestAuthShim(httpx.DigestAuth):
+    def __init__(self, **kwargs):
+        super().__init__(
+            username=kwargs.get("username"), password=kwargs.get("password")
+        )
 
 
 class HeaderAuth(httpx.Auth):
@@ -28,13 +46,157 @@ class HeaderAuth(httpx.Auth):
         yield request
 
 
-class Oauth2Auth(httpx.Auth):
-    def __init__(self, token: str = None):
+class BearerAuth(httpx.Auth):
+    def __init__(self, token: str = None, **kwargs):
         self.token = token
 
     def auth_flow(self, request):
         request.headers["Authorization"] = f"Bearer {self.token}"
         yield request
+
+
+class OAuth2Auth(httpx.Auth):
+    def __init__(
+        self,
+        provider: str | OAuth2Provider | None = None,
+        _oauth: t.List[OAuth2Provider] | None = None,
+        oauth_header: str | None = None,
+    ):
+        self._keyring = {p.name: p for p in (_oauth or [])}
+        self.provider_val = provider
+        self.header = oauth_header
+
+    def _resolve_provider(self) -> OAuth2Provider:
+        if isinstance(self.provider_val, OAuth2Provider):
+            # Already an object (Inline definition)
+            return self.provider_val
+
+        # It's a string, look it up in the registry/keyring
+        resolved = self._keyring.get(self.provider_val)
+        if not resolved:
+            raise ValueError(
+                f"Provider '{self.provider_val}' not found in keyring."
+            )
+        return resolved
+
+    @property
+    def current(self) -> OAuth2Provider:
+        """Resolution of the specific provider from the keyring."""
+        return self._resolve_provider()
+
+    def _set_headers(self, request: httpx.Request):
+        if self.header:
+            request.headers[self.header] = self.current.access_token
+        else:
+            request.headers["Authorization"] = (
+                f"Bearer {self.current.access_token}"
+            )
+        return request
+
+    def auth_flow(
+        self, request: httpx.Request
+    ) -> t.Generator[httpx.Request, httpx.Response, None]:
+        # 1. Initial attempt
+        response = yield self._set_headers(request)
+        # 2. Reactive refresh on 401
+        if response.status_code == 401:
+            self._refresh_and_update()
+            yield self._set_headers(request)
+
+    def _refresh_and_update(self):
+        try:
+            new_data = self._fetch_new_tokens()
+
+            # Update state
+            self.current.access_token = new_data["access_token"]
+            if "refresh_token" in new_data:
+                self.current.refresh_token = new_data["refresh_token"]
+
+            if self.current.on_token_refresh:
+                self.current.on_token_refresh(self.current.name, new_data)
+
+        except httpx.HTTPStatusError as exc:
+            self.current.access_token = None # Kill switch
+            # Providers sometimes return html
+            try:
+                error_payload = exc.response.json()
+                # Most OAuth2 providers use the "error" key per RFC 6749
+                error_msg = error_payload.get("error", "unknown_error")
+                body = error_payload
+            except Exception:
+                error_msg = "non_json_response"
+                body = exc.response.text[:200]
+
+            error_data = {
+                "error": error_msg,
+                "status_code": exc.response.status_code,
+                "body": body,
+            }
+            # Trigger failure callback if provided
+            if self.current.on_refresh_fail:
+                self.current.on_refresh_fail(self.current.name, error_data)
+
+            # Re-raise so the pipeline stops and doesn't retry indefinitely
+            raise
+
+    def _fetch_new_tokens(self) -> dict:
+        """Determines the correct RFC anatomy and calls the token endpoint."""
+        p = self.current
+        conf = p.config
+        # Standard Refresh Flow
+        if p.refresh_token:
+            payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": p.refresh_token,
+                "client_id": conf.client_id,
+                "client_secret": conf.client_secret,
+            }
+        # Token Exchange Flow (RFC 8693)
+        else:
+            payload = {
+                "grant_type": conf.grant_type,
+                "subject_token": p.subject_token or conf.subject_token,
+                "subject_token_type": conf.subject_token_type,
+                "requested_token_type": conf.requested_token_type,
+                "client_id": conf.client_id,
+                "client_secret": conf.client_secret,
+            }
+
+        if self.current.config.extra_params:
+            payload.update(self.current.config.extra_params)
+
+        TRANSIENT_STATUSES = {429, 500, 502, 503, 504}
+        MAX_RETRIES = 3
+
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = httpx.post(
+                    conf.access_token_url,
+                    data=payload,
+                    timeout=10.0,  # Don't let auth hang forever
+                    headers=headers
+                )
+
+                if (
+                    resp.status_code in TRANSIENT_STATUSES
+                    and attempt < MAX_RETRIES - 1
+                ):
+                    time.sleep(2 ** (attempt + 1))  # Exponential backoff
+                    continue
+
+                resp.raise_for_status()
+                return resp.json()
+
+            except (httpx.TimeoutException, httpx.NetworkError):
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(2 ** (attempt + 1))
+                    continue
+                raise
 
 
 class RestResponse:
@@ -54,8 +216,12 @@ class RestClient:
     """
 
     def __init__(
-        self, clientconfig: rst.RestClientConfig, logger: logging.Logger = None
+        self,
+        clientconfig: rst.RestClientConfig,
+        logger: logging.Logger = None,
+        oauth_keyring: t.Optional[t.List[OAuth2Provider]] = None,
     ):
+        self._oauth = oauth_keyring
         self.config: rst.RestClientConfig = clientconfig
         self.base_url: str = clientconfig.base_url
         self._auth: httpx.Auth = None
@@ -100,14 +266,24 @@ class RestClient:
             return None
         vars = self.config.auth.values or {}
         auth_methods = {
-            enums.AuthType.BASIC: httpx.BasicAuth,
-            enums.AuthType.DIGEST: httpx.DigestAuth,
+            enums.AuthType.BASIC: BasicAuthShim,
+            enums.AuthType.DIGEST: DigestAuthShim,
             enums.AuthType.HEADER: HeaderAuth,
-            enums.AuthType.OAUTH2: Oauth2Auth,
+            enums.AuthType.BEARER: BearerAuth,
+            enums.AuthType.OAUTH2: OAuth2Auth,
         }
-        return auth_methods.get(self.config.auth.method, lambda **_: None)(
-            **vars
-        )
+        method = auth_methods.get(self.config.auth.method)
+
+        if not method:
+            raise ValueError("Invalid Auth value")
+
+        if self.config.auth.method == enums.AuthType.OAUTH2:
+            return method(
+                provider=self.config.auth.provider,
+                _oauth=self._oauth,
+            )
+
+        return method(**vars)
 
     @property
     def closed(self):

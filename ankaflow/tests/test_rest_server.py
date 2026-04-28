@@ -8,7 +8,7 @@ from ..connections.rest.server import (
     common,
     RestResponse,
     HeaderAuth,
-    Oauth2Auth,
+    BearerAuth,
 )
 from ..models import rest as rst
 from ..models import enums
@@ -102,12 +102,12 @@ class TestRestClient(unittest.IsolatedAsyncioTestCase):
         auth = self.rest_client.get_auth()
         self.assertIsInstance(auth, HeaderAuth)
 
-    def test_get_auth_oauth2(self):
+    def test_get_auth_bearer(self):
         self.mock_config.auth = rst.RestAuth(
-            method=enums.AuthType.OAUTH2, values=StringDict({"token": "token"})
+            method=enums.AuthType.BEARER, values=StringDict({"token": "token"})
         )
         auth = self.rest_client.get_auth()
-        self.assertIsInstance(auth, Oauth2Auth)
+        self.assertIsInstance(auth, BearerAuth)
 
     def test_headers(self):
         req = create_dummy_request(content_type=enums.ContentType.JSON)

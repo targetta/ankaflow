@@ -225,6 +225,7 @@ class Connection:
         context: m.FlowContext,
         variables: Variables,
         logger: logging.Logger = None,  # type: ignore[assignment]
+        oauth_keyring: t.List[m.OAuth2Provider]|None = None
     ) -> None:
         self.c = duck
         self.name = name
@@ -242,6 +243,7 @@ class Connection:
         if not logger:
             self.log = logging.getLogger()
             self.log.addHandler(logging.NullHandler())
+        self._oauth_keyring = oauth_keyring
         self.init()
 
     def init(self):
