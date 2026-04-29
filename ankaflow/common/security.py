@@ -203,6 +203,27 @@ class BaseSafeDict:
             return self.__class__({"_tmp": result})["_tmp"]
         return result
 
+    def pop(self, key, *args):
+        """
+        Removes the specified key and returns the corresponding value.
+        *args allows for the default value: .pop(key, default)
+        """
+        # Note: we don't need to wrap the return value because 
+        # it was already wrapped during __setitem__
+        try:
+            return self._raw_data.pop(key, *args)
+        except KeyError:
+            # If no default was provided in *args, re-raise
+            if args:
+                return args[0]
+            raise
+
+    def popitem(self):
+        return self._raw_data.popitem()
+
+    def clear(self):
+        self._raw_data.clear()
+
 
 class StrictEnvironment(SandboxedEnvironment):
     def __init__(self, *args, **kwargs):

@@ -1,4 +1,9 @@
 # Changelog:
+## [0.7.3] - 2026-04-29
+
+### Fixes
+* Resolve issue with nested pipeline control: add `pop` method to `BaseSafeDict`
+
 ## [0.7.2] - 2026-04-28
 
 ### Fixes
