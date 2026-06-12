@@ -1,4 +1,30 @@
 # Changelog:
+## [0.8.0] - 2026-06-12
+
+### Breaking Changes
+* **Unified Tap Query Semantics:** The query parameter has been standardized across all connection types to ensure global interface predictability.
+
+* File-backed storage engines (Parquet, CSV, JSON) no longer accept partial SQL string fragments (e.g., raw selection blocks like SELECT a, b, c blindly concatenated in front of an implicit FROM clause).
+
+* All sources now expect syntactically complete, valid SQL expressions utilizing a placeholder table name (e.g., SELECT a, b, c FROM locator_placeholder).
+
+* This aligns the structural execution contract of file-backed extraction layers with remote database connections (like `ClickHouse` and `BigQuery`).
+
+* **Note on Storage Capabilities & Native Queries:** While the behavioral interface for defining queries is uniform, the SQL dialect remains native to the respective compute engine executing it. Because flat file backends lack active remote database compute, automated platform configuration parameters (like explicit dedup parameters) are bypassed. However, users can fully leverage native SQL capabilities (including complex GROUP BY or QUALIFY filtering) directly within their custom query string to perform high-performance, single-pass extraction logic.
+
+### New Features
+* **Dynamic File Reader Arguments:** Unlocked the ability to pass arbitrary parameters (`connection.params`) directly from the connection down to underlying reader primitives (read_csv, read_parquet, read_json_auto). This allows full configuration flexibility (e.g., custom delimiters like sep: "|", line formats, or compression options) right out of the box without requiring engine code changes.
+
+* **True Query Filtering on Sources:** Enabled full, standard query abstraction support across all file-based connections (CSV, Parquet, JSON). Users can now supply explicit SQL queries with custom filtering and projections directly at the extraction source layer.
+
+## Refactoring
+* **Robust SQL Validation & Rewriting:** Standardized query validation across the entire platform using SQLGlot. This refactor consolidates table-swapping routines, structural safety checks, and automatic subquery wrapping (e.g., dynamic LIMIT injection) into a centralized, bulletproof AST manipulation layer.
+
+* **Compressed Connection Topology:** Streamlined file-based connections into thin configuration shells, moving core engine logic to the base class and laying the groundwork for frictionless integration of future dynamic file formats (like Iceberg or Avro).
+
+## Fixes
+* **Standardized Logger Names:** Corrected misconfigured and hardcoded logger name strings across several internal modules, switching to the idiomatic `__name__` convention to ensure precise tracing and cleaner debugging logs.
+
 ## [0.7.3] - 2026-04-29
 
 ### Fixes
