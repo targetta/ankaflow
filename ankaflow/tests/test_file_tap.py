@@ -36,12 +36,12 @@ class TestExecuteFileTap(unittest.IsolatedAsyncioTestCase):
         # Notice how SQLGlot spaces assignments out as `key = value`
         expected_sql = (
             'CREATE OR REPLACE TABLE "my_target_table" AS '
-            "SELECT * FROM READ_CSV('http://s3/bucket/filename.csv', ignore_errors = TRUE)"
+            "SELECT * FROM READ_CSV('http://s3/bucket/filename.csv', ignore_errors = TRUE)"  # noqa: E501
         )
         self.conn.c.sql.assert_awaited_once_with(expected_sql) # type: ignore
 
     async def test_execute_file_tap_swaps_table(self):
-        """Test that a user query has its placeholder table correctly replaced."""
+        """Test that a user query has its placeholder correctly replaced."""
         user_query = "SELECT id, name FROM placeholder_tbl WHERE id > 10"
 
         await self.conn._execute_file_tap(
@@ -53,7 +53,7 @@ class TestExecuteFileTap(unittest.IsolatedAsyncioTestCase):
 
         expected_sql = (
             'CREATE OR REPLACE TABLE "my_target_table" AS '
-            "SELECT id, name FROM READ_CSV('http://s3/bucket/filename.csv') WHERE id > 10"
+            "SELECT id, name FROM READ_CSV('http://s3/bucket/filename.csv') WHERE id > 10"  # noqa: E501
         )
         self.conn.c.sql.assert_awaited_once_with(expected_sql) # type: ignore
 
@@ -71,7 +71,7 @@ class TestExecuteFileTap(unittest.IsolatedAsyncioTestCase):
         expected_sql = (
             'CREATE OR REPLACE TABLE "my_target_table" AS '
             "SELECT * FROM ("
-            "SELECT * FROM READ_CSV('http://s3/bucket/filename.csv') WHERE status = 'active'"
+            "SELECT * FROM READ_CSV('http://s3/bucket/filename.csv') WHERE status = 'active'"  # noqa: E501
             ") AS sub LIMIT 100"
         )
         self.conn.c.sql.assert_awaited_once_with(expected_sql) # type: ignore

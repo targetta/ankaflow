@@ -1,4 +1,10 @@
 # Changelog:
+## [0.8.1] - 2026-06-12
+
+### Fixes
+* Fix code style.
+
+# Changelog:
 ## [0.8.0] - 2026-06-12
 
 ### Breaking Changes
