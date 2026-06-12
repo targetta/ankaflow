@@ -25,7 +25,7 @@ else:
     from .server import RestResponse
 
 
-log = logging.getLogger("buimatic")
+log = logging.getLogger(__name__)
 
 
 class ResponseHandler:
