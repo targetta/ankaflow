@@ -7,7 +7,7 @@ import re
 import pyarrow as pa
 from pypika import Field as Field, Order
 from pypika.analytics import RowNumber
-from sqlglot import parse_one
+from sqlglot import parse_one, exp, Expression
 
 try:
     import psutil
@@ -382,7 +382,7 @@ def build_ranked_query(
     return sql, where_clause
 
 
-def validate_simple_query(query: str, ranking_enabled: bool) -> None:
+def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
     """
     Validates that the input query is safe to use with delta_scan() and ranking.
 
@@ -393,22 +393,32 @@ def validate_simple_query(query: str, ranking_enabled: bool) -> None:
     Raises:
         ValueError: If query contains CTEs, aggregates, or disallowed structures.
     """
-    tree = parse_one(query)
-
     if tree.args.get("with"):
-        raise ValueError("CTEs are not supported in delta scan source queries.")
+        raise ValueError("CTEs are not allowed in delta scan source queries.")
+ 
+    # 1. Ensure we can extract the root 'From' clause
+    from_clause = tree.args.get("from")
+    if not from_clause:
+        raise ValueError("Query must specify a source table to swap.")
+
+    # 2. Check the base expression inside the FROM clause.
+    # In a clean query, this expression (this) must be a single exp.Table node.
+    base_source = from_clause.this
+
+    if not isinstance(base_source, exp.Table):
+        raise ValueError(
+            "Multi-table queries (joins/subqueries) are not allowed."
+        )
+    
+    if tree.args.get("joins"):
+        raise ValueError(
+            "Multi-table queries (joins/subqueries) are not allowed."
+        )
 
     if ranking_enabled:
-        if tree.args.get("group"):
+        if tree.args.get("group") or list(tree.find_all(exp.AggFunc)):
             raise ValueError(
-                "GROUP BY is not supported when ranking is applied."
+                "Aggregations and GROUP BY are not allowed when ranking is applied."  # noqa: E501
             )
-        # Optional: look for aggregate functions via regex or AST walk
-        lowered = query.lower()
-        if any(
-            func in lowered
-            for func in ["avg(", "sum(", "count(", "min(", "max("]
-        ):
-            raise ValueError(
-                "Aggregate functions are not allowed when ranking is applied."
-            )
+
+    return base_source

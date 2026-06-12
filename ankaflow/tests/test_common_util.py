@@ -12,22 +12,22 @@ class TestDuckDBToPyArrowType(unittest.TestCase):
         self.assertEqual(duckdb_to_pyarrow_type("DOUBLE"), pa.float64())
         self.assertEqual(duckdb_to_pyarrow_type("BOOLEAN"), pa.bool_())
         self.assertEqual(duckdb_to_pyarrow_type("DATE"), pa.date32())
-        self.assertEqual(duckdb_to_pyarrow_type("TIMESTAMP"), pa.timestamp("ns"))
+        self.assertEqual(duckdb_to_pyarrow_type("TIMESTAMP"), pa.timestamp("ns"))  # noqa: E501
         self.assertEqual(duckdb_to_pyarrow_type("JSON"), pa.string())
         self.assertEqual(duckdb_to_pyarrow_type("UUID"), pa.string())
-        self.assertEqual(duckdb_to_pyarrow_type("DECIMAL"), pa.decimal128(38, 18))
+        self.assertEqual(duckdb_to_pyarrow_type("DECIMAL"), pa.decimal128(38, 18))  # noqa: E501
 
     def test_list_types(self):
         # Test LIST types
-        self.assertEqual(duckdb_to_pyarrow_type("LIST(INTEGER)"), pa.list_(pa.int32()))
-        self.assertEqual(duckdb_to_pyarrow_type("LIST(VARCHAR)"), pa.list_(pa.string()))
+        self.assertEqual(duckdb_to_pyarrow_type("LIST(INTEGER)"), pa.list_(pa.int32()))  # noqa: E501
+        self.assertEqual(duckdb_to_pyarrow_type("LIST(VARCHAR)"), pa.list_(pa.string()))  # noqa: E501
         # TODO: non-recursive regex patterns is insufficient 
         # self.assertEqual(duckdb_to_pyarrow_type("LIST(LIST(INTEGER))"), pa.list_(pa.list_(pa.int32())))  # noqa: E501
 
     def test_list_bracket_notation(self):
         # Test LIST[] bracket notation
-        self.assertEqual(duckdb_to_pyarrow_type("INTEGER[]"), pa.list_(pa.int32()))
-        self.assertEqual(duckdb_to_pyarrow_type("VARCHAR[]"), pa.list_(pa.string()))
+        self.assertEqual(duckdb_to_pyarrow_type("INTEGER[]"), pa.list_(pa.int32()))  # noqa: E501
+        self.assertEqual(duckdb_to_pyarrow_type("VARCHAR[]"), pa.list_(pa.string()))  # noqa: E501
         # TODO: non-recursive regex patterns is insufficient 
         # self.assertEqual(duckdb_to_pyarrow_type("LIST(INTEGER)[]"), pa.list_(pa.list_(pa.int32())))  # noqa: E501
 
@@ -38,7 +38,7 @@ class TestDuckDBToPyArrowType(unittest.TestCase):
             ("field2", pa.string())
         ])
         self.assertEqual(
-            duckdb_to_pyarrow_type('STRUCT("field1" INTEGER, "field2" VARCHAR)'),
+            duckdb_to_pyarrow_type('STRUCT("field1" INTEGER, "field2" VARCHAR)'),  # noqa: E501
             expected_struct
         )
 
@@ -49,7 +49,7 @@ class TestDuckDBToPyArrowType(unittest.TestCase):
             ("field2", pa.string())
         ]))
         self.assertEqual(
-            duckdb_to_pyarrow_type('STRUCT("field1" INTEGER, "field2" VARCHAR)[]'),
+            duckdb_to_pyarrow_type('STRUCT("field1" INTEGER, "field2" VARCHAR)[]'),  # noqa: E501
             expected_struct_list
         )
 
