@@ -8,6 +8,7 @@ import pyarrow as pa
 from pypika import Field as Field, Order
 from pypika.analytics import RowNumber
 from sqlglot import parse_one, exp, Expression
+import sqlglot
 
 try:
     import psutil
@@ -392,10 +393,10 @@ def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
 
     Raises:
         ValueError: If query contains CTEs, aggregates, or disallowed structures.
-    """
+    """  # noqa: E501
     if tree.args.get("with"):
         raise ValueError("CTEs are not allowed in delta scan source queries.")
- 
+
     # 1. Ensure we can extract the root 'From' clause
     from_clause = tree.args.get("from")
     if not from_clause:
@@ -409,7 +410,7 @@ def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
         raise ValueError(
             "Multi-table queries (joins/subqueries) are not allowed."
         )
-    
+
     if tree.args.get("joins"):
         raise ValueError(
             "Multi-table queries (joins/subqueries) are not allowed."
@@ -422,3 +423,45 @@ def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
             )
 
     return base_source
+
+def make_selectable_func(
+    func_name: str, path: str, options: t.Optional[t.Dict[str, t.Any]] = None
+) -> str:
+    """Programmatically builds a native file-reader
+    function call string using SQLGlot.
+
+    Supports read_csv, read_parquet, read_json_auto, etc.
+    """
+    options = options or {}
+
+    # 1. The first argument is always the file path string literal
+    func_args: t.List[exp.Expression] = [exp.Literal.string(path)]
+
+    # 2. Convert Python keyword options into SQLGlot assignment nodes
+    for key, value in options.items():
+        
+        # Explicit handling for DuckDB's column definitions mapping
+        if key.lower() == "columns" and isinstance(value, dict):
+            # Format the dictionary into DuckDB struct notation:
+            # "{col1: 'TYPE', col2: 'TYPE'}"
+            pairs = [f"{col_name}: '{col_type}'" for col_name, col_type in value.items()]  # noqa: E501
+            struct_str = f"{{{', '.join(pairs)}}}"
+            
+            # Treat this block as a literal so SQLGlot doesn't mangle the braces
+            val_node = sqlglot.parse_one(struct_str)
+            
+        elif isinstance(value, bool):
+            val_node = exp.Boolean(this=value)
+        elif isinstance(value, (int, float)):
+            val_node = exp.Literal.number(value)
+        elif isinstance(value, str):
+            val_node = exp.Literal.string(value)
+        else:
+            val_node = sqlglot.parse_one(str(value))
+
+        # Create 'EQ' assignment node (e.g., columns = {userId: 'UBIGINT', ...})
+        assignment = exp.EQ(this=exp.to_identifier(key), expression=val_node)
+        func_args.append(assignment)
+
+    # 3. Wrap all into an Anonymous functional node and convert to SQL string
+    return exp.Anonymous(this=func_name, expressions=func_args).sql()

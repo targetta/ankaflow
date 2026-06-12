@@ -2,12 +2,15 @@ import typing as t
 import logging
 from pypika import PostgreSQLQuery, Column
 from sqlglot.dialects.dialect import Dialects
+from sqlglot import exp
+from sqlglot import parse_one, select
 import re
 
 from ..common.path import PathFactory, CommonPath, RemotePath
 from ..common.util import (
     build_ranked_query,
     validate_simple_query,
+    make_selectable_func,
     ConfigResolver,
 )
 from .. import models as m
@@ -253,6 +256,37 @@ class Connection:
         """
         pass
 
+    async def _execute_file_tap(self, reader_func_name: str,
+                                query: t.Optional[str] = None,
+                                opts: t.Optional[dict] = None,
+                                limit: int = 0):
+        """Generic, reusable ingestion framework for file-based taps."""
+        path = self.locate(use_wildcard=True)
+        params: dict = opts or {}
+        
+        # 1. Generate the standardized reader call
+        selectable_func = make_selectable_func(reader_func_name, path, params)
+        
+        if not query:
+            parsed_query = parse_one(f"SELECT * FROM {selectable_func}")
+        else:
+            parsed_query = parse_one(query)
+            target_table = validate_simple_query(parsed_query, False)
+            target_table.replace(parse_one(selectable_func))
+
+        # 2. Apply optional limit safely
+        if limit:
+            select_node = t.cast(exp.Select, parsed_query)
+            parsed_query = (
+                select("*")
+                .from_(select_node.subquery(alias="sub"))
+                .limit(limit)
+            )
+
+        # 3. Build and execute final CTAS
+        ctas_stmt = f'CREATE OR REPLACE TABLE "{self.name}" AS {parsed_query.sql()}'  # noqa: E501
+        await self.c.sql(ctas_stmt)
+
     def _raw_sql_rewriter(self, sql: str) -> str:
         """Rewrites short locators in supported DuckDB table
         functions to full locators.
@@ -324,7 +358,8 @@ class Connection:
         apply_ranking = bool(self.conn.version and self.conn.key)
 
         # Validate before building
-        validate_simple_query(query, apply_ranking)
+        parsed_query = parse_one(query)
+        validate_simple_query(parsed_query, apply_ranking)
         return build_ranked_query(
             query=query,
             selectable=selectable,

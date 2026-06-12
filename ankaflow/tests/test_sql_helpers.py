@@ -2,7 +2,11 @@ import unittest
 import sqlglot
 from sqlglot import exp
 
-from ..common.util import build_ranked_query, validate_simple_query
+from ..common.util import (
+    build_ranked_query,
+    validate_simple_query,
+    make_selectable_func
+)
 
 
 class TestBuildRankedQuery(unittest.TestCase):
@@ -187,3 +191,46 @@ class TestValidateSimpleQuery(unittest.TestCase):
 
         res = validate_simple_query(parsed, ranking_enabled=False)
         self.assertEqual(res.name, "tbl")
+
+    def test_make_selectable_csv_with_mixed_options(self):
+        path = "s3://bucket/data.csv"
+        options = {
+            "delim": ";",
+            "header": True,
+            "skip": 1
+        }
+        
+        result = make_selectable_func("read_csv", path, options)
+
+        expected = "READ_CSV('s3://bucket/data.csv', delim = ';', header = TRUE, skip = 1)"  # noqa: E501
+        self.assertEqual(result, expected)
+
+    def test_make_selectable_parquet_no_options(self):
+        path = "/local/dir/file.parquet"
+        
+        result = make_selectable_func("read_parquet", path)
+        
+        expected = "READ_PARQUET('/local/dir/file.parquet')"
+        self.assertEqual(result, expected)
+
+    def test_make_selectable_json_with_columns_schema(self):
+        path = "todos.json"
+        options = {
+            "format": "array",
+            "columns": {
+                "userId": "UBIGINT",
+                "id": "UBIGINT",
+                "title": "VARCHAR",
+                "completed": "BOOLEAN"
+            }
+        }
+        
+        result = make_selectable_func("read_json", path, options)
+        
+        # Match SQLGlot's standard AST string output
+        expected = (
+            "READ_JSON('todos.json', "
+            "format = 'array', "
+            "columns = STRUCT('UBIGINT' AS userId, 'UBIGINT' AS id, 'VARCHAR' AS title, 'BOOLEAN' AS completed))"  # noqa: E501
+        )
+        self.assertEqual(result, expected)

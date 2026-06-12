@@ -1,5 +1,4 @@
 import typing as t
-from sqlglot import parse_one
 import pandas as pd
 import logging
 import json
@@ -39,31 +38,9 @@ class Variable(Connection):
 
 class Parquet(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        if self.conn.raw_dispatch:
-            if not query:
-                raise ValueError("Query is mandatory")
-            rewritten = self._raw_sql_rewriter(query)
-            stmt = f"""
-                CREATE TABLE "{self.name}"
-                AS
-                {rewritten}
-                """.strip()
-        else:
-            path = self.locate(use_wildcard=True)
-            stmt = f"""
-                CREATE OR REPLACE TABLE
-                "{self.name}"
-                AS SELECT
-                {query or "*"}
-                FROM read_parquet('{path}', union_by_name = true)
-            """
-            if limit:
-                stmt = parse_one(stmt).subquery().limit(limit).sql()  # type: ignore[attr-defined]
-        try:
-            await self.c.sql(stmt)
-        except Exception as e:
-            log.exception(e)
-            raise
+        params = self.conn.params or {"union_by_name": True}
+        await self._execute_file_tap("read_parquet", query,
+                                     opts=params, limit = limit)
 
     async def sink(self, from_name: str):
         path = self.locate()
@@ -93,17 +70,9 @@ class Parquet(Connection):
 
 class JSON(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        path = self.locate(use_wildcard=True)
-        stmt = f"""
-        CREATE OR REPLACE TABLE "{self.name}"
-        AS
-        SELECT
-        {query or "*"}
-        FROM read_json_auto('{path}')
-        """
-        if limit:
-            stmt = parse_one(stmt).subquery().limit(limit).sql()  # type: ignore[attr-defined]
-        await self.c.sql(stmt)
+        params = self.conn.params or {}
+        await self._execute_file_tap("read_json_auto", query,
+                                     opts=params, limit = limit)
 
     async def sink(self, from_name: str):
         path = self.locate()
@@ -126,19 +95,9 @@ class JSON(Connection):
 
 class CSV(Connection):
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
-        path = self.locate(use_wildcard=True)
-        stmt = f"""
-        CREATE OR REPLACE TABLE "{self.name}"
-        AS
-        SELECT
-        {query or "*"}
-        FROM read_csv('{path}')
-        """
-        if limit:
-            # Cannot access attribute "subquery" for class "Expression"
-            # Attribute "subquery" is unknown
-            stmt = parse_one(stmt).subquery().limit(limit).sql()  # type: ignore[attr-defined]
-        await self.c.sql(stmt)
+        params = self.conn.params or {"ignore_errors": True}
+        await self._execute_file_tap("read_csv", query,
+                                     opts=params, limit = limit)
 
     async def sink(self, from_name: str):
         path = self.locate()
