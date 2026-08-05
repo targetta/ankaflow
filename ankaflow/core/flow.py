@@ -628,16 +628,17 @@ class AsyncFlow:
         self.log.info(f"Run duration: {end - start}")
         return self
 
-    async def df(self) -> pd.DataFrame:
-        """
-        Returns a dataframe from the last stage.
+    async def df(self, from_stage: str | None = None) -> pd.DataFrame:
+        """Returns dataframe from the specified stage,
+        or last stage if not set.
 
         Returns:
-            pd.DataFrame: Data from the last stage.
+            pd.DataFrame: Data from the given stage.
         """
-        if not self.lastname:
+        from_name = from_stage or self.lastname
+        if not from_name:
             return pd.DataFrame()
-        coro = await self.idb.sql(f'SELECT * FROM "{self.lastname}"')
+        coro = await self.idb.sql(f'SELECT * FROM "{from_name}"')
         return await coro.df()
 
     async def show_schema(self) -> t.List[m.core.SchemaItem]:
@@ -750,9 +751,11 @@ class Flow:
         asyncio_run(self.flow.run())
         return self
 
-    def df(self):
-        """Returns dataframe from the last stage"""
-        return asyncio_run(self.flow.df())
+    def df(self, from_stage: str | None = None):
+        """Returns dataframe from the specified stage,
+        or last stage if not set.
+        """
+        return asyncio_run(self.flow.df(from_stage))
 
     def show_schema(self) -> t.List[m.core.SchemaItem]:
         """
