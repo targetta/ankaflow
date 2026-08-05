@@ -156,11 +156,36 @@ class TestFnMacros(unittest.TestCase):
         self.assertFn("SELECT Fn.dt(concat('2025-03-10',' ','17:24:41'))", datetime.fromisoformat("2025-03-10T17:24:41"))
         # unknown string fallback to 1970
         self.assertFn("SELECT Fn.dt('not a date')", datetime.fromisoformat("1970-01-01T00:00:00"))
+
         with self.assertRaises(duckdb.ConversionException):
             self.assertFn("SELECT Fn.dt('not a date', fail_on_error:=TRUE)", datetime.fromisoformat("1970-01-01T00:00:00"))
 
         # iso string that can be formatted
         self.assertFn("SELECT Fn.dt('2024/04/06', '%Y/%m/%d')", datetime.fromisoformat("2024-04-06T00:00:00"))
+
+        # Integer unix seconds (10 digits) specifically
+        self.assertFn("SELECT Fn.dt(1712361600)", datetime(2024, 4, 6, 0, 0, 0))
+
+        # ISO strings with UTC 'Z' indicator
+        self.assertFn("SELECT Fn.dt('2025-03-10T17:24:41Z')", datetime(2025, 3, 10, 17, 24, 41))
+
+        # ISO strings with timezone offsets
+        self.assertFn("SELECT Fn.dt('2025-03-10T17:24:41+02:00')", datetime(2025, 3, 10, 17, 24, 41))
+
+        # Passing an existing DATE object
+        self.assertFn("SELECT Fn.dt(DATE '2025-03-10')", datetime(2025, 3, 10, 0, 0, 0))
+
+        # Passing an existing TIMESTAMP object
+        self.assertFn("SELECT Fn.dt(TIMESTAMP '2025-03-10 17:24:41')", datetime(2025, 3, 10, 17, 24, 41))
+
+        # NULL input handling
+        self.assertFn("SELECT Fn.dt(CAST(NULL AS VARCHAR))", datetime(1970, 1, 1, 0, 0, 0))
+
+        # Human-readable format mapping (YYYY-MM-DD HH:mm:ss)
+        self.assertFn("SELECT Fn.dt('2024/04/06 14:30:00', 'YYYY/MM/DD HH:mm:ss')", datetime(2024, 4, 6, 14, 30, 0))
+
+        # Pattern with %z / %Z timezone strip logic
+        self.assertFn("SELECT Fn.dt('2024-04-06T14:30:00+02:00', '%Y-%m-%dT%H:%M:%S%z')", datetime(2024, 4, 6, 14, 30, 0))
 
     def test_dt_isoformat(self):
         self.assertFn("SELECT Fn.dt_isoformat(TIMESTAMP '2024-04-01 00:00:00')", "2024-04-01 00:00:00")

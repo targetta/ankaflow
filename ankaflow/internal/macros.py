@@ -104,8 +104,27 @@ class Fn:
     int = "(a) AS IFNULL(TRY_CAST(a AS BIGINT), 0::BIGINT)"
     str = "(a) AS IFNULL(TRY_CAST(a AS VARCHAR), '')"
     dt = """
-    (a, fail_on_error := FALSE) AS
+    (a, pattern := NULL, fail_on_error := FALSE) AS
     CASE
+        -- Format-based parsing when pattern is explicitly passed
+        WHEN pattern IS NOT NULL THEN
+            STRPTIME(
+                REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2}|[A-Za-z/_]+)$', ''),
+                CASE
+                    WHEN POSITION('%' IN pattern) > 0 THEN
+                        REGEXP_REPLACE(REGEXP_REPLACE(pattern, '%z', ''), '%Z', '')
+                    ELSE
+                        REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                            pattern,
+                            'YYYY', '%Y'),
+                            'MM', '%m'),
+                            'DD', '%d'),
+                            'HH', '%H'),
+                            'mm', '%M'),
+                            'ss', '%S')
+                END
+            )
+
         -- Case 1: ISO string with optional timezone → strip and cast
         WHEN TRY_CAST(REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2})$', '') AS TIMESTAMP) IS NOT NULL
             THEN CAST(REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2})$', '') AS TIMESTAMP)
@@ -118,78 +137,44 @@ class Fn:
         WHEN TRY_CAST(a AS DATE) IS NOT NULL
             THEN CAST(a AS TIMESTAMP)
 
-        -- Case 4: Unix time in seconds (int or float)
+        -- Case 4: Unix time in seconds
         WHEN TRY_CAST(a AS DOUBLE) IS NOT NULL
-            AND CAST(a AS TEXT) ~ '^[0-9]+(\\.[0-9]+)?$'
+            AND CAST(a AS TEXT) ~ '^[0-9]+(\.[0-9]+)?$'
             AND TRY_CAST(CAST(a AS DOUBLE) AS BIGINT) BETWEEN 1000000000 AND 9999999999
-        THEN make_timestamp(CAST(CAST(a AS DOUBLE) * 1000000 AS BIGINT))  -- seconds → microseconds
+            THEN make_timestamp(CAST(CAST(a AS DOUBLE) * 1000000 AS BIGINT))
 
-
-        -- Case 5: nanoseconds (length > 15)
+        -- Case 5: Nanoseconds
         WHEN TRY_CAST(a AS BIGINT) IS NOT NULL
             AND CAST(a AS TEXT) ~ '^[0-9]+$'
             AND LENGTH(CAST(a AS TEXT)) > 15
             THEN make_timestamp(CAST(TRY_CAST(a AS BIGINT) / 1000 AS BIGINT))
 
-        -- Case 6: milliseconds
+        -- Case 6: Milliseconds
         WHEN TRY_CAST(a AS BIGINT) IS NOT NULL
             AND CAST(a AS TEXT) ~ '^[0-9]+$'
             THEN make_timestamp(CAST(TRY_CAST(a AS BIGINT) * 1000 AS BIGINT))
 
-        -- Case 7: Explicit fail for other strings
+        -- Case 7: Explicit fail
         WHEN TYPEOF(a) = 'VARCHAR' AND LENGTH(CAST(a AS TEXT)) > 1 AND fail_on_error = TRUE
-            THEN CAST('Unsupported format - use Fn.dt(value, pattern)' AS TIMESTAMP)
+            THEN CAST('Unsupported format - use dt(value, pattern := ''...'')' AS TIMESTAMP)
 
-        -- Fallback
         ELSE make_timestamp(0)
-    END,
-    (value, pattern) AS (
-            SELECT * FROM query(
-                concat(
-                    'SELECT STRPTIME(''',
-
-                    -- Strip TZ suffix from value
-                    REGEXP_REPLACE(value, '(Z|[+-][0-9]{2}:[0-9]{2}|[A-Za-z/_]+)$', ''),
-
-                    ''',''',
-
-                    -- Auto-detect and convert human-readable patterns
-                    CASE
-                        WHEN POSITION('%' IN pattern) > 0 THEN
-                            REGEXP_REPLACE(REGEXP_REPLACE(pattern, '%z', ''), '%Z', '')
-                        ELSE
-                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                                pattern,
-                                'YYYY', '%Y'),
-                                'MM', '%m'),
-                                'DD', '%d'),
-                                'HH', '%H'),
-                                'mm', '%M'),
-                                'ss', '%S')
-                    END,
-
-                    ''')'
-                )
-            )
-        );
-    """
+    END"""
     """
     dt macro provides robust datetime parsing and normalization.
 
-    Overload (a):
-        Accepts any input value and attempts to convert it to a TIMESTAMP.
-        - Supports TIMESTAMP_NS, TIMESTAMP, DATE, and BIGINT (UNIX ms).
-        - Automatically strips time zone suffixes (Z or ±HH:MM) from strings.
-        - Fails with a descriptive error if input is unrecognized.
-
-    Overload (value, pattern):
-        Dynamically parses a string using STRPTIME.
-        - Strips unsupported time zone suffixes (Z or ±HH:MM) from input.
-        - Removes %z and %Z from format string, as DuckDB does not interpret timezones.
-        - Uses query() to compile a literal SQL expression for parsing.
+    Parameters:
+        a (VARCHAR | NUMBER | DATE | TIMESTAMP): The input value to parse.
+        pattern (VARCHAR, optional): Explicit format pattern (e.g., 'YYYY-MM-DD' or '%Y-%m-%d').
+                                    Defaults to NULL for auto-detection.
+        fail_on_error (BOOLEAN, optional): If TRUE, raises an exception on invalid inputs during
+                                        auto-detection mode. Defaults to FALSE.
 
     Returns:
         A DuckDB TIMESTAMP or a hard failure on invalid input.
+        
+        NOTE: Failure handling (fail_on_error) is only supported during auto-detection mode.
+            When an explicit pattern is provided, unmatched strings will evaluate to NULL.
     """
     # dt_format = "(a, format) AS STRFTIME(a, format)"
     dt_isoformat = "(a) AS STRFTIME(a, '%c')"
