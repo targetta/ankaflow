@@ -22,32 +22,47 @@ from ..common.util import print_df
 log = logging.getLogger(__name__)
 
 
-def validate_no_explicit_project(sql_str: str) -> None:
+def _enforce_and_qualify_sql(
+    sql_str: str, 
+    dataset: str
+) -> str:
     """
-    Parses BigQuery SQL/DDL using sqlglot and raises ValueError if any
-    table, view, or schema creation explicitly specifies a project/catalog.
-    """
+    Parses BigQuery SQL/DDL, enforces single-dataset isolation, and qualifies 
+    all physical tables with the specified dataset.
+
+    Raises:
+        ValueError: If a table reference explicitly targets a different project or dataset.
+    """  # noqa: E501
     try:
-        # Parse expression tree (parse_one returns the top-level AST node)
         parsed = parse_one(sql_str, read="bigquery")
-    except Exception:
-        # Pass through if syntax is custom or unparseable by sqlglot
-        return
+    except Exception as e:
+        raise ValueError(f"Failed to parse SQL query with sqlglot: {e}") from e
 
-    # 1. Check Table references (SELECT, INSERT, UPDATE, DELETE, MERGE, etc.)
+    # Track CTE names to avoid modifying CTE aliases
+    cte_names = {
+        cte.alias_or_name.lower()
+        for with_clause in parsed.find_all(expressions.With)
+        for cte in with_clause.find_all(expressions.CTE)
+    }
+
+    # Process all physical Table nodes
     for table in parsed.find_all(expressions.Table):
-        if table.catalog:
+        table_name = table.name.lower()
+        # Skip CTE references
+        if table_name in cte_names:
+            continue
+
+        # ENFORCE ISOLATION: Reject explicit cross-dataset references
+        if table.db or table.catalog:
             raise ValueError(
-                f"Forbidden explicit project reference '{table.catalog}' in query. Reference '{table.sql(dialect="bigquery")}' must not specify a project when project configuration is omitted."  # noqa: E501
+                f"Cross-dataset isolation violation: Reference '{table.sql(dialect='bigquery')}' "  # noqa: E501
+                f"targets dataset '{table.db}', but execution is isolated to dataset '{dataset}'."  # noqa: E501
             )
 
-    # 2. Check Schema/Target references (CREATE TABLE/VIEW, DROP, etc.)
-    for schema in parsed.find_all(expressions.Schema):
-        # In DDL expressions, schema.this is often a Table node containing the catalog
-        if isinstance(schema.this, expressions.Table) and schema.this.catalog:
-            raise ValueError(
-                f"Forbidden explicit project reference '{schema.this.catalog}' in DDL. Target '{schema.sql(dialect='bigquery')}' must not specify a project when project configuration is omitted."  # noqa: E501
-            )
+        # QUALIFY: Attach dataset
+        table.set("db", expressions.to_identifier(dataset, quoted=False))
+    # Return fully qualified, isolated BigQuery SQL
+    return parsed.sql(dialect="bigquery")
 
 
 class SinkStrategy(str, Enum):
@@ -101,6 +116,16 @@ class BigQuery(Connection):
                 datasef_ref = self.cfg.bigquery.dataset
 
             self.queryconfig.default_dataset = datasef_ref
+
+    def _get_dataset(self):
+        dataset = (
+            self._normalize_bq_identifier(self.cfg.bigquery.dataset)
+            if self.cfg.bigquery.dataset
+            else None
+        )
+        if not dataset:
+            raise ValueError("Bigquery dataset not set")
+        return dataset
 
     def _get_client(self) -> Client:
         """Returns a cached BigQuery client or initializes one."""
@@ -178,15 +203,9 @@ class BigQuery(Connection):
     ) -> str:
         """Returns the fully qualified BigQuery table name using dot notation."""
         name = name or self.conn.locator
-
         # Normalize identifiers (remove quotes/backticks)
         name = self._normalize_bq_identifier(name)
-        dataset = (
-            self._normalize_bq_identifier(self.cfg.bigquery.dataset)
-            if self.cfg.bigquery.dataset
-            else None
-        )
-
+        dataset = self._get_dataset()
         if dataset:
             return f"{dataset}.{name}"
         return name
@@ -203,12 +222,10 @@ class BigQuery(Connection):
 
     def _execute_query_to_dataframe(self, query: str) -> DataFrame:
         """Submits query to BigQuery and returns DataFrame."""
+        dataset = self._get_dataset()
         log.debug(f"Query sent:\n{query}")
+        query = _enforce_and_qualify_sql(query, dataset)
         client = self._get_client()
-
-        if not self.cfg.bigquery.project:
-            validate_no_explicit_project(query)
-
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # Suppress Arrow type warnings
@@ -412,8 +429,6 @@ class BigQuery(Connection):
     async def sql(self, statement: str) -> t.Any:
         """Executes a BigQuery SQL statement and logs the result."""
 
-        if not self.cfg.bigquery.project:
-            validate_no_explicit_project(statement)
 
         try:
             df: DataFrame = self._execute_query_to_dataframe(statement)
