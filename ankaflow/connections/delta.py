@@ -399,35 +399,31 @@ class Deltatable(Connection):
             return 0
         return int(row[0])
 
-    def _cast_dict_to_string(self, tbl: pa.Table) -> pa.Table:
-        """Return a table where any dictionary-encoded columns are cast to string.
-
-        Args:
-            tbl (pa.Table): Input Arrow table.
-
-        Returns:
-            pa.Table: Table with dictionary columns converted to pa.string().
+    def _cast_dict_to_string(self, data: ArrowLike) -> ArrowLike:
+        """Casts any dictionary-encoded fields to pa.string().
+        Handles both pa.Table and pa.RecordBatchReader.
         """
-        # Fast path: if no dictionary columns, return as-is.
-        if all(
-            not pa.types.is_dictionary(col.type) for col in tbl.itercolumns()
-        ):
-            return tbl
+        schema = data.schema
+        if not any(pa.types.is_dictionary(field.type) for field in schema):
+            return data  # Fast path: no dictionaries present
 
-        names = tbl.schema.names
-        out_cols: list[pa.Array] = []
+        new_fields = [
+            pa.field(f.name, pa.string(), f.nullable, f.metadata)
+            if pa.types.is_dictionary(f.type)
+            else f
+            for f in schema
+        ]
+        target_schema = pa.schema(new_fields, metadata=schema.metadata)
 
-        for col in tbl.itercolumns():
-            if pa.types.is_dictionary(col.type):
-                # Avoid building an intermediate Table: convert only this column.
-                # to_pylist() is robust; if you need to preserve large binary,
-                # replace with col.cast(pa.string()) when upstream supports it.
-                out_cols.append(pa.array(col.to_pylist(), type=pa.string()))
-            else:
-                out_cols.append(col)
+        if isinstance(data, pa.Table):
+            return data.cast(target_schema)
 
-        # Reuse metadata if present
-        return pa.table(out_cols, names=names, metadata=tbl.schema.metadata)
+        # Handle RecordBatchReader streaming
+        def batch_generator():
+            for batch in data:
+                yield batch.cast(target_schema)
+
+        return pa.RecordBatchReader.from_batches(target_schema, batch_generator())  # noqa: E501
 
     async def _infer_schema(
         self, data: t.Optional[ArrowLike] = None
