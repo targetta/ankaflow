@@ -1,4 +1,19 @@
 # Changelog:
+## [0.9.0] - 2026-08-05
+
+### Breaking Changes
+* **Fn.dt macro signature:** Updated the macro to use a single unified signature `Fn.dt(a, pattern := NULL, fail_on_error := FALSE)`. Legacy macro overloads were removed to resolve signature overload ambiguity errors introduced in newer DuckDB versions.
+
+### New Features
+* **Upgrade DuckDB:** Upgraded DuckDB to version `1.5.1` (the latest supported by Pyodide). This resolves several issues regarding Pyodide deployment.
+* **Retrieve DataFrame from arbitrary stage:** Added an optional `from_stage` argument to `flow.df(from_stage: str | None = None)`. This allows fetching the DataFrame from a specific pipeline stage while falling back to the previous default behavior when omitted.
+* **BigQuery Connection**: Added AST-based query qualification using sqlglot. Physical tables are automatically dataset-qualified (dataset.table) using the active context while enforcing single-dataset/project isolation boundaries.
+
+### Fixes
+* **BigQuery Connection**: Resolved an issue where `default_dataset` was omitted from `QueryJobConfig` when `project` was not explicitly set, enabling unqualified table resolution across views and queries.
+* **Pyodide Package Cleanup:** Upgraded DuckDB dependency to fix an issue where Pyodide installations were left orphaned due to a missing/obsolete package.
+
+# Changelog:
 ## [0.8.1] - 2026-06-12
 
 ### Fixes
