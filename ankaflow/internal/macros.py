@@ -106,24 +106,56 @@ class Fn:
     dt = """
     (a, pattern := NULL, fail_on_error := FALSE) AS
     CASE
-        -- Format-based parsing when pattern is explicitly passed
+        -- -------------------------------------------------------------
+        -- Branch 1: Pattern-based Parsing (when pattern is provided)
+        -- -------------------------------------------------------------
         WHEN pattern IS NOT NULL THEN
-            STRPTIME(
-                REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2}|[A-Za-z/_]+)$', ''),
-                CASE
-                    WHEN POSITION('%' IN pattern) > 0 THEN
-                        REGEXP_REPLACE(REGEXP_REPLACE(pattern, '%z', ''), '%Z', '')
-                    ELSE
-                        REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                            pattern,
-                            'YYYY', '%Y'),
-                            'MM', '%m'),
-                            'DD', '%d'),
-                            'HH', '%H'),
-                            'mm', '%M'),
-                            'ss', '%S')
-                END
-            )
+            CASE
+                -- Successful parse with pattern
+                WHEN TRY_STRPTIME(
+                    REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2}|[A-Za-z/_]+)$', ''),
+                    CASE
+                        WHEN POSITION('%' IN pattern) > 0 THEN
+                            REGEXP_REPLACE(REGEXP_REPLACE(pattern, '%z', ''), '%Z', '')
+                        ELSE
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                pattern,
+                                'YYYY', '%Y'),
+                                'MM', '%m'),
+                                'DD', '%d'),
+                                'HH', '%H'),
+                                'mm', '%M'),
+                                'ss', '%S')
+                    END
+                ) IS NOT NULL THEN
+                    STRPTIME(
+                        REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2}|[A-Za-z/_]+)$', ''),
+                        CASE
+                            WHEN POSITION('%' IN pattern) > 0 THEN
+                                REGEXP_REPLACE(REGEXP_REPLACE(pattern, '%z', ''), '%Z', '')
+                            ELSE
+                                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                    pattern,
+                                    'YYYY', '%Y'),
+                                    'MM', '%m'),
+                                    'DD', '%d'),
+                                    'HH', '%H'),
+                                    'mm', '%M'),
+                                    'ss', '%S')
+                        END
+                    )
+
+                -- Hard failure on pattern mismatch when fail_on_error = TRUE
+                WHEN fail_on_error = TRUE THEN
+                    CAST('Invalid format string or input value for dt()' AS TIMESTAMP)
+
+                -- Default fallback
+                ELSE make_timestamp(0)
+            END
+
+        -- -------------------------------------------------------------
+        -- Branch 2: Automatic Type & Pattern Detection
+        -- -------------------------------------------------------------
 
         -- Case 1: ISO string with optional timezone → strip and cast
         WHEN TRY_CAST(REGEXP_REPLACE(CAST(a AS TEXT), '(Z|[+-][0-9]{2}:[0-9]{2})$', '') AS TIMESTAMP) IS NOT NULL
@@ -137,13 +169,13 @@ class Fn:
         WHEN TRY_CAST(a AS DATE) IS NOT NULL
             THEN CAST(a AS TIMESTAMP)
 
-        -- Case 4: Unix time in seconds
+        -- Case 4: Unix time in seconds (int or float)
         WHEN TRY_CAST(a AS DOUBLE) IS NOT NULL
             AND CAST(a AS TEXT) ~ '^[0-9]+(\.[0-9]+)?$'
             AND TRY_CAST(CAST(a AS DOUBLE) AS BIGINT) BETWEEN 1000000000 AND 9999999999
             THEN make_timestamp(CAST(CAST(a AS DOUBLE) * 1000000 AS BIGINT))
 
-        -- Case 5: Nanoseconds
+        -- Case 5: Nanoseconds (length > 15)
         WHEN TRY_CAST(a AS BIGINT) IS NOT NULL
             AND CAST(a AS TEXT) ~ '^[0-9]+$'
             AND LENGTH(CAST(a AS TEXT)) > 15
@@ -154,12 +186,13 @@ class Fn:
             AND CAST(a AS TEXT) ~ '^[0-9]+$'
             THEN make_timestamp(CAST(TRY_CAST(a AS BIGINT) * 1000 AS BIGINT))
 
-        -- Case 7: Explicit fail
-        WHEN TYPEOF(a) = 'VARCHAR' AND LENGTH(CAST(a AS TEXT)) > 1 AND fail_on_error = TRUE
-            THEN CAST('Unsupported format - use dt(value, pattern := ''...'')' AS TIMESTAMP)
+        -- Case 7: Explicit fail for auto-detection
+        WHEN fail_on_error = TRUE THEN
+            CAST('Unsupported format - use dt(value, pattern := ''...'')' AS TIMESTAMP)
 
+        -- Fallback
         ELSE make_timestamp(0)
-    END"""
+    END;"""
     """
     dt macro provides robust datetime parsing and normalization.
 
