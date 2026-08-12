@@ -7,6 +7,7 @@ from google.cloud.bigquery.job.load import LoadJobConfig
 from google.cloud.bigquery.job import CreateDisposition, WriteDisposition
 import google.api_core.exceptions as gex
 from sqlglot import parse_one
+from sqlglot import expressions
 from sqlglot.dialects.dialect import Dialects
 import warnings
 from pandas import DataFrame
@@ -19,6 +20,34 @@ from ..internal import CatalogException
 from ..common.util import print_df
 
 log = logging.getLogger(__name__)
+
+
+def validate_no_explicit_project(sql_str: str) -> None:
+    """
+    Parses BigQuery SQL/DDL using sqlglot and raises ValueError if any
+    table, view, or schema creation explicitly specifies a project/catalog.
+    """
+    try:
+        # Parse expression tree (parse_one returns the top-level AST node)
+        parsed = parse_one(sql_str, read="bigquery")
+    except Exception:
+        # Pass through if syntax is custom or unparseable by sqlglot
+        return
+
+    # 1. Check Table references (SELECT, INSERT, UPDATE, DELETE, MERGE, etc.)
+    for table in parsed.find_all(expressions.Table):
+        if table.catalog:
+            raise ValueError(
+                f"Forbidden explicit project reference '{table.catalog}' in query. Reference '{table.sql(dialect="bigquery")}' must not specify a project when project configuration is omitted."  # noqa: E501
+            )
+
+    # 2. Check Schema/Target references (CREATE TABLE/VIEW, DROP, etc.)
+    for schema in parsed.find_all(expressions.Schema):
+        # In DDL expressions, schema.this is often a Table node containing the catalog
+        if isinstance(schema.this, expressions.Table) and schema.this.catalog:
+            raise ValueError(
+                f"Forbidden explicit project reference '{schema.this.catalog}' in DDL. Target '{schema.sql(dialect='bigquery')}' must not specify a project when project configuration is omitted."  # noqa: E501
+            )
 
 
 class SinkStrategy(str, Enum):
@@ -61,11 +90,17 @@ class BigQuery(Connection):
         if schema_update:
             self.loadconfig.schema_update_options = schema_update
 
-        # Set default dataset if both are present
-        if self.cfg.bigquery.project and self.cfg.bigquery.dataset:
-            self.queryconfig.default_dataset = (
-                f"{self.cfg.bigquery.project}.{self.cfg.bigquery.dataset}"
-            )
+        # Set default dataset
+        if self.cfg.bigquery.dataset:
+            # If project is explicit, use "project.dataset"
+            if self.cfg.bigquery.project:
+                datasef_ref = (
+                    f"{self.cfg.bigquery.project}.{self.cfg.bigquery.dataset}"  # noqa: E501
+                )
+            else:  # just plain dataset
+                datasef_ref = self.cfg.bigquery.dataset
+
+            self.queryconfig.default_dataset = datasef_ref
 
     def _get_client(self) -> Client:
         """Returns a cached BigQuery client or initializes one."""
@@ -170,6 +205,10 @@ class BigQuery(Connection):
         """Submits query to BigQuery and returns DataFrame."""
         log.debug(f"Query sent:\n{query}")
         client = self._get_client()
+
+        if not self.cfg.bigquery.project:
+            validate_no_explicit_project(query)
+
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")  # Suppress Arrow type warnings
@@ -372,6 +411,10 @@ class BigQuery(Connection):
 
     async def sql(self, statement: str) -> t.Any:
         """Executes a BigQuery SQL statement and logs the result."""
+
+        if not self.cfg.bigquery.project:
+            validate_no_explicit_project(statement)
+
         try:
             df: DataFrame = self._execute_query_to_dataframe(statement)
             self.log.info(f"SQL result:\n{print_df(df, all_rows=False)}")

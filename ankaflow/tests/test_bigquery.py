@@ -41,6 +41,37 @@ class TestBigQueryConnection(unittest.IsolatedAsyncioTestCase):
         self.conn.schema_ = AsyncMock()
         self.conn.log = self.conn.log = MagicMock(spec=logging.Logger)
 
+    def test_validate_explicit_project_raises_error(self):
+        """Should raise ValueError when query includes explicit project (p.d.t)."""  # noqa: E501
+        sql = "SELECT x FROM p.d.t"
+        with self.assertRaises(ValueError) as ctx:
+            bg.validate_no_explicit_project(sql)
+        
+        self.assertIn("Forbidden explicit project reference 'p'", str(ctx.exception))  # noqa: E501
+
+    def test_validate_explicit_project_ddl_raises_error(self):
+        """Should raise ValueError when DDL includes explicit project."""
+        sql = "CREATE OR REPLACE VIEW p.d.my_view AS SELECT x FROM d.my_table"
+        with self.assertRaises(ValueError) as ctx:
+            bg.validate_no_explicit_project(sql)
+        
+        self.assertIn("Forbidden explicit project reference", str(ctx.exception))
+
+    def test_validate_unqualified_tables_pass(self):
+        """Should pass without error when only dataset.table or table is specified."""  # noqa: E501
+        valid_queries = [
+            "SELECT x FROM d.t",
+            "SELECT x FROM t",
+            "CREATE OR REPLACE VIEW my_view AS SELECT x FROM _dim_catalog",
+            "INSERT INTO d.target_table SELECT * FROM source_table",
+        ]
+        for sql in valid_queries:
+            with self.subTest(sql=sql):
+                try:
+                    bg.validate_no_explicit_project(sql)
+                except ValueError as e:
+                    self.fail(f"validate_no_explicit_project raised ValueError unexpectedly for '{sql}': {e}")  # noqa: E501
+
     @patch(f"{__name__}.bg.Client")
     def test_get_client_from_service_account(self, mock_client):
         self.conn.cfg.bigquery.credential_file = "/fake/credentials.json"
