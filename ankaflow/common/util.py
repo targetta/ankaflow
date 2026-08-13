@@ -465,3 +465,53 @@ def make_selectable_func(
 
     # 3. Wrap all into an Anonymous functional node and convert to SQL string
     return exp.Anonymous(this=func_name, expressions=func_args).sql()
+
+
+def enforce_and_qualify_sql(
+    sql_str: str, 
+    database: str,
+    dialect: str
+) -> str:
+    """
+    Parses BigQuery SQL/DDL, enforces single-dataset isolation, and qualifies 
+    all physical tables with the specified dataset.
+
+    Raises:
+        ValueError: If a table reference explicitly targets a different project or dataset.
+    """  # noqa: E501
+    try:
+        parsed = parse_one(sql_str, read=dialect)
+    except Exception as e:
+        raise ValueError(f"Failed to parse SQL query with sqlglot: {e}") from e
+
+    # Track CTE names to avoid modifying CTE aliases
+    cte_names = {
+        cte.alias_or_name.lower()
+        for with_clause in parsed.find_all(exp.With)
+        for cte in with_clause.find_all(exp.CTE)
+    }
+
+    # Process all physical Table nodes
+    for table in parsed.find_all(exp.Table):
+        table_name = table.name.lower()
+        # Skip CTE references
+        if table_name in cte_names:
+            continue
+
+        # ENFORCE ISOLATION: Reject explicit cross-dataset references
+        if table.catalog:
+            raise ValueError(
+                f"Cross-catalog isolation violation: Reference '{table.sql(dialect=dialect)}' "  # noqa: E501
+                f"targets catalog '{table.catalog}'."  # noqa: E501
+            )
+
+        if table.db and table.db != database:
+            raise ValueError(
+                f"Cross-database isolation violation: Reference '{table.sql(dialect=dialect)}' "  # noqa: E501
+                f"targets dataset '{table.db}', but execution is isolated to cu."  # noqa: E501
+            )
+
+        # QUALIFY: Attach dataset
+        table.set("db", exp.to_identifier(database, quoted=False))
+    # Return fully qualified, isolated BigQuery SQL
+    return parsed.sql(dialect="bigquery")

@@ -7,7 +7,6 @@ from google.cloud.bigquery.job.load import LoadJobConfig
 from google.cloud.bigquery.job import CreateDisposition, WriteDisposition
 import google.api_core.exceptions as gex
 from sqlglot import parse_one
-from sqlglot import expressions
 from sqlglot.dialects.dialect import Dialects
 import warnings
 from pandas import DataFrame
@@ -17,52 +16,9 @@ from . import errors as e
 from .. import models as m
 from ..models.connections import BigQueryConnection
 from ..internal import CatalogException
-from ..common.util import print_df
+from ..common.util import print_df, enforce_and_qualify_sql
 
 log = logging.getLogger(__name__)
-
-
-def _enforce_and_qualify_sql(
-    sql_str: str, 
-    dataset: str
-) -> str:
-    """
-    Parses BigQuery SQL/DDL, enforces single-dataset isolation, and qualifies 
-    all physical tables with the specified dataset.
-
-    Raises:
-        ValueError: If a table reference explicitly targets a different project or dataset.
-    """  # noqa: E501
-    try:
-        parsed = parse_one(sql_str, read="bigquery")
-    except Exception as e:
-        raise ValueError(f"Failed to parse SQL query with sqlglot: {e}") from e
-
-    # Track CTE names to avoid modifying CTE aliases
-    cte_names = {
-        cte.alias_or_name.lower()
-        for with_clause in parsed.find_all(expressions.With)
-        for cte in with_clause.find_all(expressions.CTE)
-    }
-
-    # Process all physical Table nodes
-    for table in parsed.find_all(expressions.Table):
-        table_name = table.name.lower()
-        # Skip CTE references
-        if table_name in cte_names:
-            continue
-
-        # ENFORCE ISOLATION: Reject explicit cross-dataset references
-        if table.db or table.catalog:
-            raise ValueError(
-                f"Cross-dataset isolation violation: Reference '{table.sql(dialect='bigquery')}' "  # noqa: E501
-                f"targets dataset '{table.db}', but execution is isolated to dataset '{dataset}'."  # noqa: E501
-            )
-
-        # QUALIFY: Attach dataset
-        table.set("db", expressions.to_identifier(dataset, quoted=False))
-    # Return fully qualified, isolated BigQuery SQL
-    return parsed.sql(dialect="bigquery")
 
 
 class SinkStrategy(str, Enum):
@@ -224,7 +180,7 @@ class BigQuery(Connection):
         """Submits query to BigQuery and returns DataFrame."""
         dataset = self._get_dataset()
         log.debug(f"Query sent:\n{query}")
-        query = _enforce_and_qualify_sql(query, dataset)
+        query = enforce_and_qualify_sql(query, dataset, "bigquery")
         client = self._get_client()
         try:
             with warnings.catch_warnings():

@@ -1,6 +1,6 @@
 import unittest
 import pyarrow as pa
-from ..common.util import duckdb_to_pyarrow_type
+from ..common.util import duckdb_to_pyarrow_type, enforce_and_qualify_sql
 
 
 class TestDuckDBToPyArrowType(unittest.TestCase):
@@ -69,3 +69,52 @@ class TestDuckDBToPyArrowType(unittest.TestCase):
         # Test unsupported type
         with self.assertRaises(ValueError):
             duckdb_to_pyarrow_type("UNSUPPORTED_TYPE")
+
+
+class TestEnforceTableQualification(unittest.TestCase):
+
+    def test_qualified_table_raises(self):
+        """Should raise ValueError when query includes explicit project (p.d.t)."""  # noqa: E501
+        sql = "SELECT x FROM p.d.t"
+        with self.assertRaises(ValueError) as ctx:
+            enforce_and_qualify_sql(sql, "d", "bigquery")
+
+        self.assertIn("Cross-catalog isolation violation", str(ctx.exception))  # noqa: E501
+
+    def test_partially_qualified_table_raises(self):
+        """Should raise ValueError when query includes explicit project (p.d.t)."""  # noqa: E501
+        sql = "SELECT x FROM bad.t"
+        with self.assertRaises(ValueError) as ctx:
+            enforce_and_qualify_sql(sql, "d", "bigquery")
+        
+        self.assertIn("Cross-database isolation violation", str(ctx.exception))  # noqa: E501
+
+    def test_nested_qualification_raises(self):
+        """Should raise ValueError when query includes explicit project (p.d.t)."""  # noqa: E501
+        sql = "CREATE OR REPLACE VIEW my_view AS SELECT x FROM bad.my_table"
+        with self.assertRaises(ValueError) as ctx:
+            enforce_and_qualify_sql(sql, "d", "bigquery")
+        
+        self.assertIn("Cross-database isolation violation", str(ctx.exception))  # noqa: E501
+
+    def test_table_qualified(self):
+        """Should raise ValueError when DDL includes explicit project."""
+        sql = "CREATE OR REPLACE VIEW my_view AS SELECT x FROM my_table"
+        expected = "CREATE OR REPLACE VIEW d.my_view AS SELECT x FROM d.my_table"
+        result = enforce_and_qualify_sql(sql, "d", "bigquery")
+        
+        self.assertEqual(result, expected)
+
+    def test_validate_unqualified_tables_pass(self):
+        """Should pass without error when only dataset.table or table is specified."""  # noqa: E501
+        valid_queries = [
+            "SELECT x FROM t",
+            "CREATE OR REPLACE VIEW my_view AS SELECT x FROM _dim_catalog",
+            "INSERT INTO target_table SELECT * FROM source_table",
+        ]
+        for sql in valid_queries:
+            with self.subTest(sql=sql):
+                try:
+                    enforce_and_qualify_sql(sql, "d", "bigquery")
+                except ValueError as e:
+                    self.fail(f"validate_no_explicit_project raised ValueError unexpectedly for '{sql}': {e}")  # noqa: E501

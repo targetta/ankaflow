@@ -1,4 +1,12 @@
 # Changelog:
+## [0.10.0] - 2026-08-13
+
+### New Features
+
+* **AST Engine Isolation**: Refactored SQL AST validation and table qualification into a dialect-agnostic pipeline (sqlglot). Standardized single-database/dataset isolation enforcement across all SQL statement types (DDL, DML, Views, and Queries) in preparation for multi-adapter support (BigQuery, ClickHouse).
+
+
+# Changelog:
 ## [0.9.0] - 2026-08-05
 
 ### Breaking Changes
