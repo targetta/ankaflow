@@ -4,6 +4,7 @@ import logging
 import json
 from io import StringIO
 from pathlib import Path
+from sqlglot.dialects.dialect import Dialects
 
 from ..common.security import BaseSafeDict
 
@@ -37,6 +38,8 @@ class Variable(Connection):
 
 
 class Parquet(Connection):
+    dialect = Dialects.DUCKDB
+
     async def tap(self, query: t.Optional[str] = None, limit: int = 0):
         params = self.conn.params or {"union_by_name": True}
         await self._execute_file_tap("read_parquet", query,

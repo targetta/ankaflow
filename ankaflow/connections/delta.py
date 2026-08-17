@@ -7,6 +7,7 @@ from sqlglot import parse_one
 import logging
 import pyarrow as pa
 import asyncio
+from sqlglot.dialects.dialect import Dialects
 
 from . import errors as e
 from .. import errors as ee
@@ -21,6 +22,7 @@ log = logging.getLogger(__name__)
 
 
 class Deltatable(Connection):
+    dialect = Dialects.DUCKDB
 
     def init(self):
         self.conn = t.cast(DeltatableConnection, self.conn)

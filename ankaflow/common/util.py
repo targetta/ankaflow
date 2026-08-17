@@ -5,8 +5,6 @@ import typing as t
 import time
 import re
 import pyarrow as pa
-from pypika import Field as Field, Order
-from pypika.analytics import RowNumber
 from sqlglot import parse_one, exp, Expression
 import sqlglot
 
@@ -332,7 +330,6 @@ def duckdb_to_pyarrow_type(duckdb_type: str):
     raise ValueError(f"Unsupported DuckDB type: {duckdb_type}")
 
 
-# TODO: Split into separate QueryRenderer class
 def build_ranked_query(
     query: str,
     selectable: str,
@@ -340,47 +337,26 @@ def build_ranked_query(
     keys: t.Optional[t.List[str]],
     dialect: str,
 ) -> tuple[str, str]:
-    """
-    Helper function to inject row ranking logic into a SQL query.
-
-    Args:
-        query: Base SQL query (SELECT ...)
-        selectable: FROM clause target (e.g., table or alias)
-        version: Column used for ranking (e.g., timestamp)
-        keys: List of partitioning keys
-        dialect: SQL dialect for sqlglot
+    """Injects row ranking deduplication into a SQL query using QUALIFY.
 
     Returns:
-        tuple[str, str]: (transformed SQL query, optional WHERE clause)
+        tuple[str, str]: (Transformed query with QUALIFY clause, empty string)
     """
-    apply_ranking = bool(version and keys)
-    where_clause = f"WHERE {Field('__rank__') == 1}" if apply_ranking else ""
+    base_query = parse_one(query, read=dialect).from_(selectable) # type: ignore
 
-    base_query = parse_one(query)
+    qualifier = "ROW_NUMBER"
 
-    if apply_ranking:
-        rank_filter_expr = Field("__rank__") == 1
-        parsed_filter = parse_one(str(rank_filter_expr))
-        where_clause = f"WHERE {parsed_filter.sql(dialect, identify=True)}"
-        base_query = base_query.from_(selectable)  # type: ignore[attr-defined]
-        # Build ROW_NUMBER() OVER (PARTITION BY ...) ORDER BY ... using PyPika
-        rank_expr = RowNumber()
-        for key in keys:  # type: ignore
-            rank_expr = rank_expr.over(Field(key))
-        rank_expr = rank_expr.orderby(Field(version), order=Order.desc)  # type: ignore
+    if version and keys:
+        keys_str = ", ".join(f'"{k}"' for k in keys)
+        condition = parse_one(
+            f'{qualifier}() OVER (PARTITION BY {keys_str} ORDER BY "{version}" DESC) = 1'  # noqa: E501
+        )
+        base_query = base_query.qualify(condition)
 
-        # Inject the __rank__ column using SQLGlot-compatible string
-        base_query = base_query.select(f"{rank_expr.get_sql()} AS __rank__")  # type: ignore[attr-defined]
+    sql = base_query.sql(dialect, identify=True)
 
-        # Wrap in a subquery for dialects like BigQuery
-        base_query = base_query.subquery(alias="ranked")  # type: ignore[attr-defined]
-        sql = f"SELECT * FROM {base_query.sql(dialect, identify=True)}"
-    else:
-        base_query = base_query.from_(selectable)  # type: ignore[attr-defined]
-        sql = base_query.sql(dialect, identify=True)
-        where_clause = ""
-
-    return sql, where_clause
+    # Returning "" as second element keeps downstream f"{ranked_query} {where_clause}" intact  # noqa: E501
+    return sql, ""
 
 
 def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
@@ -424,6 +400,7 @@ def validate_simple_query(tree: Expression, ranking_enabled: bool) -> exp.Table:
 
     return base_source
 
+
 def make_selectable_func(
     func_name: str, path: str, options: t.Optional[t.Dict[str, t.Any]] = None
 ) -> str:
@@ -439,17 +416,19 @@ def make_selectable_func(
 
     # 2. Convert Python keyword options into SQLGlot assignment nodes
     for key, value in options.items():
-        
         # Explicit handling for DuckDB's column definitions mapping
         if key.lower() == "columns" and isinstance(value, dict):
             # Format the dictionary into DuckDB struct notation:
             # "{col1: 'TYPE', col2: 'TYPE'}"
-            pairs = [f"{col_name}: '{col_type}'" for col_name, col_type in value.items()]  # noqa: E501
+            pairs = [
+                f"{col_name}: '{col_type}'"
+                for col_name, col_type in value.items()
+            ]  # noqa: E501
             struct_str = f"{{{', '.join(pairs)}}}"
-            
+
             # Treat this block as a literal so SQLGlot doesn't mangle the braces
             val_node = sqlglot.parse_one(struct_str)
-            
+
         elif isinstance(value, bool):
             val_node = exp.Boolean(this=value)
         elif isinstance(value, (int, float)):
@@ -467,13 +446,9 @@ def make_selectable_func(
     return exp.Anonymous(this=func_name, expressions=func_args).sql()
 
 
-def enforce_and_qualify_sql(
-    sql_str: str, 
-    database: str,
-    dialect: str
-) -> str:
+def enforce_and_qualify_sql(sql_str: str, database: str, dialect: str) -> str:
     """
-    Parses BigQuery SQL/DDL, enforces single-dataset isolation, and qualifies 
+    Parses BigQuery SQL/DDL, enforces single-dataset isolation, and qualifies
     all physical tables with the specified dataset.
 
     Raises:

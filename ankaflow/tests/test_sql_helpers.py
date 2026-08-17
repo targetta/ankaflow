@@ -19,7 +19,7 @@ class TestBuildRankedQuery(unittest.TestCase):
             dialect="duckdb",
         )
         self.assertIn('FROM "t"', sql)
-        self.assertNotIn("__rank__", sql)
+        self.assertNotIn("ROW_NUMBER", sql)
         self.assertEqual(where, "")
 
     def test_ranking_injected_correctly(self):
@@ -30,11 +30,12 @@ class TestBuildRankedQuery(unittest.TestCase):
             keys=["id"],
             dialect="duckdb",
         )
+        # DuckDB natively supports QUALIFY
         self.assertIn("ROW_NUMBER()", sql)
-        self.assertIn("OVER (PARTITION BY", sql)
+        self.assertIn('PARTITION BY "id"', sql)
         self.assertIn('ORDER BY "updated_at" DESC', sql)
-        self.assertIn("SELECT * FROM", sql)
-        self.assertEqual(where, 'WHERE "__rank__" = 1')
+        self.assertIn("QUALIFY ROW_NUMBER()", sql)
+        self.assertEqual(where, "")
 
     def test_ranking_with_multiple_keys(self):
         sql, where = build_ranked_query(
@@ -45,8 +46,44 @@ class TestBuildRankedQuery(unittest.TestCase):
             dialect="duckdb",
         )
         self.assertIn('PARTITION BY "id", "region"', sql)
-        self.assertEqual(where, 'WHERE "__rank__" = 1')
+        self.assertIn("QUALIFY ROW_NUMBER()", sql)
+        self.assertEqual(where, "")
 
+    def test_transpiles_qualify_for_postgres(self):
+        sql, where = build_ranked_query(
+            query="SELECT id FROM users",
+            selectable="t",
+            version="updated_at",
+            keys=["id"],
+            dialect="postgres",
+        )
+        # Postgres doesn't have QUALIFY, so SQLGlot turns it into a subselect
+        self.assertIn('WHERE "_W" = 1', sql.upper())
+        self.assertIn('ROW_NUMBER() OVER (PARTITION BY "id"', sql)
+        self.assertEqual(where, "")
+
+    def test_transpiles_qualify_for_clickhouse(self):
+        sql, where = build_ranked_query(
+            query="SELECT id FROM users",
+            selectable="t",
+            version="updated_at",
+            keys=["id"],
+            dialect="clickhouse",
+        )
+        self.assertIn('ROW_NUMBER() OVER (PARTITION BY "id"', sql)
+        self.assertEqual(where, "")
+
+
+    def test_transpiles_qualify_for_bigquery(self):
+        sql, where = build_ranked_query(
+            query="SELECT id FROM users",
+            selectable="t",
+            version="updated_at",
+            keys=["id"],
+            dialect="bigquery",
+        )
+        self.assertIn("ROW_NUMBER() OVER (PARTITION BY `id`", sql)
+        self.assertEqual(where, "")
 
 class TestValidateSimpleQuery(unittest.TestCase):
     def test_valid_simple_select_passes(self):

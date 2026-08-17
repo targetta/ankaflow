@@ -119,6 +119,16 @@
   show: -1
   query: select * from Deltatable
 
+- name: Read Qulified Delta
+  kind: source
+  connection:
+    kind: Deltatable
+    locator: <<API.look('test_delta', variables)>>
+    version: amount
+    key: [id]
+  show: -1
+  query: select * from Deltatable
+
 - name: Truncate Delta
   kind: sql
   connection:
