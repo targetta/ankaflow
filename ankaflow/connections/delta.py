@@ -19,10 +19,9 @@ from ..common.util import duckdb_to_pyarrow_type
 
 log = logging.getLogger(__name__)
 
-ArrowLike = t.Union[pa.Table, pa.RecordBatchReader]
-
 
 class Deltatable(Connection):
+
     def init(self):
         self.conn = t.cast(DeltatableConnection, self.conn)
         # TODO: implement locking client
@@ -197,14 +196,14 @@ class Deltatable(Connection):
         )
         return view_name
 
-    async def _read_view(self, view_name: str) -> ArrowLike:
+    async def _read_view(self, view_name: str) -> pa.Table:
         """Return Arrow result directly from DuckDB.
 
         Args:
             view_name (str): Temporary view name to read from.
 
         Returns:
-            pa.RecordBatchReader | pa.Table: Arrow result for the sink.
+            pa.Table: Arrow result for the sink.
         """
         rel = await self.c.sql(f'SELECT * FROM "{view_name}"')
         # Prefer streaming for large results if your relation supports it:
@@ -220,7 +219,7 @@ class Deltatable(Connection):
         """
         await self.c.sql(f'DROP VIEW IF EXISTS "{view_name}"')
 
-    async def _to_arrow(self, data: ArrowLike, schema: pa.Schema) -> ArrowLike:
+    async def _to_arrow(self, data: pa.Table, schema: pa.Schema) -> pa.Table:
         """Normalize Arrow data if needed.
 
         Args:
@@ -230,9 +229,6 @@ class Deltatable(Connection):
         Returns:
             ArrowLike: Arrow reader (preferred) or combined table.
         """
-        # If your writer accepts a RecordBatchReader, return as-is.
-        if isinstance(data, pa.RecordBatchReader):
-            return data
 
         # For pa.Table, ensure predictable layout (optional):
         return data.combine_chunks()
@@ -279,7 +275,7 @@ class Deltatable(Connection):
         return kwargs
 
     async def _write_deltatable(
-        self, uri: str, tbl: ArrowLike, create_flag: bool = False
+        self, uri: str, tbl: pa.Table, create_flag: bool = False
     ):
         """
         Writes to an existing Delta table.
@@ -293,14 +289,6 @@ class Deltatable(Connection):
         )
         try:
             """Write Arrow to Delta; stream if possible."""
-            # If delta-rs accepts readers directly, pass the reader.
-            if isinstance(tbl, pa.RecordBatchReader):
-                dl.write_deltalake(
-                    uri,
-                    tbl,
-                    **delta_kwargs,
-                )
-                return
 
             # pa.Table path:
             dl.write_deltalake(
@@ -399,9 +387,8 @@ class Deltatable(Connection):
             return 0
         return int(row[0])
 
-    def _cast_dict_to_string(self, data: ArrowLike) -> ArrowLike:
+    def _cast_dict_to_string(self, data: pa.Table) -> pa.Table:
         """Casts any dictionary-encoded fields to pa.string().
-        Handles both pa.Table and pa.RecordBatchReader.
         """
         schema = data.schema
         if not any(pa.types.is_dictionary(field.type) for field in schema):
@@ -415,33 +402,21 @@ class Deltatable(Connection):
         ]
         target_schema = pa.schema(new_fields, metadata=schema.metadata)
 
-        if isinstance(data, pa.Table):
-            return data.cast(target_schema)
-
-        # Handle RecordBatchReader streaming
-        def batch_generator():
-            for batch in data:
-                yield batch.cast(target_schema)
-
-        return pa.RecordBatchReader.from_batches(target_schema, batch_generator())  # noqa: E501
+        return data.cast(target_schema)
 
     async def _infer_schema(
-        self, data: t.Optional[ArrowLike] = None
+        self, data: t.Optional[pa.Table] = None
     ) -> pa.Schema:
         """Infer schema from Arrow data or declared fields.
 
         Args:
-            data (pa.RecordBatchReader | pa.Table | None): Arrow data.
+            data (pa.Table | None): Arrow data.
 
         Returns:
             pa.Schema: Schema for writing.
         """
         if data is not None:
-            schema = (
-                data.schema
-                if isinstance(data, pa.RecordBatchReader)
-                else data.schema
-            )
+            schema = data.schema
             return schema
 
         if not self.conn.fields:

@@ -30,7 +30,7 @@ class Relation:
         return self.rel.df()
 
     async def arrow(self) -> Table:
-        return self.rel.arrow()
+        return self.rel.to_arrow_table()
 
 
 class DDB:
