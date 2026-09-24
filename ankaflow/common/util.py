@@ -7,6 +7,7 @@ import re
 import pyarrow as pa
 from sqlglot import parse_one, exp, Expression
 import sqlglot
+from collections.abc import MutableMapping
 
 try:
     import psutil
@@ -342,7 +343,7 @@ def build_ranked_query(
     Returns:
         tuple[str, str]: (Transformed query with QUALIFY clause, empty string)
     """
-    base_query = parse_one(query, read=dialect).from_(selectable) # type: ignore
+    base_query = parse_one(query, read=dialect).from_(selectable)  # type: ignore
 
     qualifier = "ROW_NUMBER"
 
@@ -490,3 +491,70 @@ def enforce_and_qualify_sql(sql_str: str, database: str, dialect: str) -> str:
         table.set("db", exp.to_identifier(database, quoted=False))
     # Return fully qualified, isolated BigQuery SQL
     return parsed.sql(dialect="bigquery")
+
+
+def set_mapping_value(
+    target: t.Union[t.MutableMapping, None], # type: ignore
+    path: str,
+    value: t.Any,
+    default_factory: t.Callable[[], t.Any] = dict,
+) -> t.Any:
+    """Sets a value in a dict-like target (supports dot-notation for nested paths).
+
+    If target is None, creates a new dictionary using default_factory.
+    Instantiates intermediate nested nodes using the exact type of target
+    (or default_factory) to preserve custom dict types like BaseSafeDict.
+
+    Returns the updated target.
+    """
+    if target is None:
+        target: MutableMapping = default_factory()
+
+    if not (hasattr(target, "__getitem__") and hasattr(target, "__setitem__")):
+        raise ValueError(
+            f"Type '{type(target).__name__}' does not support key assignment."
+        )
+
+    keys = path.split(".")
+    curr: MutableMapping = target
+
+    for key in keys[:-1]:
+        # Retrieve existing node via dict lookup
+        child = curr[key] if key in curr else None
+
+        if child is None or not (
+            isinstance(child, MutableMapping) or hasattr(child, "__setitem__")
+        ):
+            # Instantiate child using the exact class/type as parent `curr`
+            new_child = type(curr)()
+            curr[key] = new_child
+            curr = new_child
+        else:
+            curr = child
+
+    curr[keys[-1]] = value
+    return target
+
+
+def parse_rfc8288_link(link_header: str, rel: str = "next") -> t.Optional[str]:
+    """Parse HTTP Link header according to RFC 8288
+    and return target URL for specified rel."""
+    if not link_header:
+        return None
+    links = link_header.split(",")
+    for link in links:
+        parts = link.strip().split(";")
+        if len(parts) < 2:
+            continue
+        url_part = parts[0].strip()
+        if not (url_part.startswith("<") and url_part.endswith(">")):
+            continue
+        target_url = url_part[1:-1]
+
+        for param in parts[1:]:
+            param_parts = param.strip().split("=")
+            if len(param_parts) == 2 and param_parts[0].lower() == "rel":
+                rel_value = param_parts[1].strip("\"'")
+                if rel_value.lower() == rel.lower():
+                    return target_url
+    return None

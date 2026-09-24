@@ -1,4 +1,15 @@
 # Changelog:
+## [0.12.0] - 2026-09-23
+
+### New Features
+
+* **Cursor pagination support in Rest/HTTP connections:** Added full support for cursor-based pagination by setting `response.handler.kind=CursorPaginator`.
+  * **Flexible Response Extraction:** Read cursors from JSON bodies using JMESPath (`cursor_locator="body"`), HTTP headers (`cursor_locator="header"`), or RFC 8288 Link headers (`cursor_locator="rfc_token"` or `"rfc_url"`).
+  * **Dynamic Request Injection:** Inject next cursors directly into query parameters, or JSON request bodies (including nested dictionary paths using dot-notation).
+  * **Built-in Safety Guardrails:** Includes automatic cycle detection to prevent infinite pagination loops on duplicate cursors, custom `stop_value` sentinels, and configurable request throttling between pages.
+
+
+# Changelog:
 ## [0.11.0] - 2026-08-17
 
 ### Breaking Changes & Deprecations

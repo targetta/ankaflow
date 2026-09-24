@@ -7,13 +7,19 @@ from tempfile import gettempdir
 from pathlib import Path
 import jmespath
 import sys
+from urllib.parse import parse_qs, urlparse
 
 from ...models.connections import RestConnection
 from ...models import rest as rst
 from ...models import enums, OAuth2Provider
 from .common import MaterializerProtocol, Materializer, MaterializeError
 from ..connection import Connection
-from ...common.util import null_logger, print_error
+from ...common.util import (
+    null_logger,
+    print_error,
+    parse_rfc8288_link,
+    set_mapping_value,
+)
 
 IS_PYODIDE = sys.platform == "emscripten"
 
@@ -26,6 +32,12 @@ else:
 
 
 log = logging.getLogger(__name__)
+
+
+class Page:
+    def __init__(self, data: t.List[t.Any], next_request: t.Optional[t.Any]):
+        self.data = data
+        self.next_request = next_request
 
 
 class ResponseHandler:
@@ -52,11 +64,6 @@ class ResponseHandler:
 
 
 class PaginationHandler(ResponseHandler):
-    class Page:
-        # Output structure including page data and next page request
-        def __init__(self, data: t.List[t.Any], next_request: rst.Request):
-            self.data = data
-            self.next_request = next_request
 
     def _setup(self):
         if self.res.handler.param_locator == enums.ParameterDisposition.QUERY:
@@ -118,7 +125,7 @@ class PaginationHandler(ResponseHandler):
         await self.read_response()
         next_req = self.update_request()
         self.log.debug(f"Next request:\n{next_req}")
-        return PaginationHandler.Page(self._records, next_req)
+        return Page(self._records, next_req)
 
 
 class URLPollingHandler(ResponseHandler):
@@ -175,6 +182,160 @@ class StatePollingHandler(ResponseHandler):
             return (None, completed)
 
 
+class CursorPaginationHandler(ResponseHandler):
+
+    def _setup(self):
+        self._records = []
+        self._data = None
+        self._extracted_cursor: t.Optional[t.Any] = None
+        self._previous_cursors: t.Set[t.Any] = set()
+
+    def extract_cursor(self) -> t.Optional[t.Any]:
+        handler_cfg: rst.CursorPaginator = self.res.handler
+
+        if handler_cfg.cursor_locator == rst.CursorResponseLocator.BODY:
+            if handler_cfg.cursor_param and self._data is not None:
+                return jmespath.search(handler_cfg.cursor_param, self._data)
+            return None
+
+        elif handler_cfg.cursor_locator == rst.CursorResponseLocator.HEADER:
+            if handler_cfg.cursor_param and hasattr(self.resp, "headers"):
+                # Handle case-insensitive header access if dict or Response
+                headers = self.resp.headers
+                if hasattr(headers, "get"):
+                    return headers.get(handler_cfg.cursor_param)
+            return None
+
+        elif handler_cfg.cursor_locator in (
+            rst.CursorResponseLocator.RFC_TOKEN,
+            rst.CursorResponseLocator.RFC_URL,
+        ):
+            headers = getattr(self.resp, "headers", {})
+            link_header = (
+                headers.get("Link") or headers.get("link")
+                if hasattr(headers, "get")
+                else None
+            )  # noqa: E501
+            target_url = (
+                parse_rfc8288_link(link_header, rel="next")
+                if link_header
+                else None
+            )  # noqa: E501
+
+            if not target_url:
+                return None
+
+            if handler_cfg.cursor_locator == rst.CursorResponseLocator.RFC_URL:
+                return target_url
+
+            # Extract parameter from query string in target_url
+            parsed = urlparse(target_url)
+            query_params = parse_qs(parsed.query)
+            if (
+                handler_cfg.cursor_param
+                and handler_cfg.cursor_param in query_params
+            ):
+                return query_params[handler_cfg.cursor_param][0]
+            return None
+
+        return None
+
+    def has_next(self) -> bool:
+        cursor = self._extracted_cursor
+        handler_cfg: rst.CursorPaginator = self.res.handler
+
+        # 1. Falsy/empty check (None, False, empty string, empty list/dict)
+        if (
+            cursor is None
+            or cursor is False
+            or cursor == ""
+            or cursor == []
+            or cursor == {}
+        ):
+            return False
+
+        # 2. Configured end-sentinel / stop-value check
+        if (
+            handler_cfg.stop_value is not None
+            and cursor == handler_cfg.stop_value
+        ):
+            return False
+
+        # 3. Infinite loop detection against duplicate cursors
+        if cursor in self._previous_cursors:
+            self.log.warning(
+                f"Infinite loop detected: cursor '{cursor}' already processed."
+            )
+            return False
+
+        return True
+
+    async def read_response(self):
+        if self.res.content_type == enums.DataType.JSON:
+            self._data = await self.resp.json()
+            if self.res.locator:
+                self._records = (
+                    jmespath.search(self.res.locator, self._data) or []
+                )
+            else:
+                self._records = self._data
+
+            self._extracted_cursor = self.extract_cursor()
+        else:
+            raise NotImplementedError(
+                f"Content type '{self.res.content_type}' not implemented"
+            )
+
+    def update_request(self) -> t.Optional[t.Any]:
+        if not self.has_next():
+            return None
+
+        handler_cfg: rst.CursorPaginator = self.res.handler
+        next_req = self.req.model_copy(deep=True)
+        cursor_val = self._extracted_cursor
+
+        # RFC_URL: parse target URL and update endpoint + query params directly
+        if (
+            handler_cfg.cursor_locator == rst.CursorResponseLocator.RFC_URL
+            and isinstance(cursor_val, str)
+        ):
+            parsed = urlparse(cursor_val)
+            next_req.endpoint = parsed.path
+            new_params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+            next_req.query.update(new_params)
+            self._previous_cursors.add(cursor_val)
+            return next_req
+
+        if not handler_cfg.cursor_name:
+            raise ValueError(
+                "`cursor_name` must be defined for parameter injection."
+            )
+
+        # Injection into Query Parameters
+        if handler_cfg.cursor_disposition == rst.CursorRequestDisposition.QUERY:
+            next_req.query[handler_cfg.cursor_name] = cursor_val
+
+        # Injection into Request Body (supports dot-notation for nested dicts)
+        elif (
+            handler_cfg.cursor_disposition == rst.CursorRequestDisposition.BODY
+        ):
+            if next_req.body is None:
+                next_req.body = {}
+            set_mapping_value(
+                next_req.body, handler_cfg.cursor_name, cursor_val
+            )
+
+        self._previous_cursors.add(cursor_val)
+        return next_req
+
+    async def next(self, response: RestResponse):
+        self.resp = response
+        await self.read_response()
+        next_req = self.update_request()
+        self.log.debug(f"Next cursor request:\n{next_req}")
+        return Page(self._records, next_req)
+
+
 class RestApi:
     def __init__(
         self,
@@ -207,8 +368,9 @@ class RestApi:
             if self._client.closed:
                 self._client.connect()
             return
-        self._client = RestClient(self.confg,
-                                  oauth_keyring=self._oauth_keyring).connect()
+        self._client = RestClient(
+            self.confg, oauth_keyring=self._oauth_keyring
+        ).connect()
 
     async def handle_response(self, resp: RestResponse):
         # TODO: Rework the handling logic
@@ -263,6 +425,20 @@ class RestApi:
                     self.log.debug(f"Throttling {self.res.handler.throttle}s")
                     await sleep(self.res.handler.throttle)
                 resp = await self._client.fetch(next_req)
+        elif self.res.handler.kind == rst.ResponseHandlerTypes.CURSOR_PAGINATOR:
+            paginator = CursorPaginationHandler(self.req, self.id)
+            while True:
+                page = await paginator.next(resp)
+                data = page.data
+                await self.mat.materialize(data)
+                next_req = page.next_request
+                if not next_req:
+                    break
+                self.log.debug(next_req)
+                if self.res.handler.throttle and self.res.handler.throttle > 0:
+                    self.log.debug(f"Throttling {self.res.handler.throttle}s")
+                    await sleep(self.res.handler.throttle)
+                resp = await self._client.fetch(next_req)
         # Single page reponse
         else:
             data = await ResponseHandler(self.req, self.id).read_response(resp)
@@ -293,9 +469,12 @@ class Rest(Connection):
             self.schema_,
             self.conn.fields,
         )
-        self.api = RestApi(self.conn.client, mat,
-                           logger=self.log,
-                           oauth_keyring=self._oauth_keyring)
+        self.api = RestApi(
+            self.conn.client,
+            mat,
+            logger=self.log,
+            oauth_keyring=self._oauth_keyring,
+        )
         self.request = self.conn.request
         self.log = self.log
 

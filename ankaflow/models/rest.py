@@ -1,9 +1,10 @@
+from enum import Enum
 import typing as t
 from pydantic import (
     BaseModel,
     field_validator,
     Field as PydanticField,
-    ConfigDict
+    ConfigDict,
 )
 
 from .enums import (
@@ -48,7 +49,7 @@ class OAuth2Provider(BaseModel):
     """
     Implements standard OAuth2 authorization and token exchange flows.
 
-    Retry Policy: "The auth mechanism automatically retries transient errors 
+    Retry Policy: "The auth mechanism automatically retries transient errors
     (5xx, 429, and timeouts) up to 3 times before triggering on_refresh_fail."
     """
 
@@ -178,6 +179,7 @@ class ResponseHandlerTypes:
     PAGINATOR = "Pagination"
     URLPOLLING = "URLPolling"
     STATEPOLLING = "StatePolling"
+    CURSOR_PAGINATOR = "CursorPagination"
 
 
 class BasicHandler(BaseModel):
@@ -278,15 +280,92 @@ class StatePoller(BaseModel):
     """
 
 
+class CursorResponseLocator(str, Enum):
+    """Specifies where and how to extract
+    the cursor from an incoming response."""
+
+    BODY = "body"
+    """Extract cursor from JSON response body using a JMESPath expression."""
+
+    HEADER = "header"
+    """Read cursor directly from an HTTP response header."""
+
+    RFC_TOKEN = "rfc_token"
+    """Extract a named query parameter from an RFC 8288 Link header."""
+
+    RFC_URL = "rfc_url"
+    """Extract full next URL/path from an RFC 8288 Link header."""
+
+
+class CursorRequestDisposition(str, Enum):
+    """Specifies where and how to inject the
+    pagination cursor into the next request."""
+
+    QUERY = "query"
+    """Inject cursor as a URL query parameter (e.g., ?cursor=xyz123)."""
+
+    BODY = "body"
+    """Inject cursor into the JSON request body. Supports dot-notation paths
+    for nested fields (e.g., 'variables.cursor').
+    """
+
+
+class CursorPaginator(BaseModel):
+    """
+    A response handler for cursor-based paginated REST and GraphQL APIs.
+
+    Generates repeated requests by extracting a cursor token or URL from the response
+    and injecting it into subsequent requests until an empty/null cursor or end-sentinel is met.
+    """  # noqa: E501
+
+    kind: t.Literal[ResponseHandlerTypes.CURSOR_PAGINATOR]  # type: ignore
+
+    # --- Response Extraction ---
+    cursor_locator: CursorResponseLocator = CursorResponseLocator.BODY
+    """Where and how to locate the cursor in the response."""
+
+    cursor_param: t.Optional[str] = None
+    """
+    Field or path name to extract from response:
+
+
+    - JMESPath expression if cursor_locator='body' (e.g., 'nextCursor', 'data.orders.pageInfo.endCursor')
+    - Header name if cursor_locator='header' (e.g., 'X-Next-Cursor')
+    - Query parameter name if cursor_locator='rfc_token'
+    - Ignored if cursor_locator='rfc_url'
+    """  # noqa: E501
+
+    # --- Request Injection ---
+    cursor_disposition: CursorRequestDisposition = (
+        CursorRequestDisposition.QUERY
+    )  # noqa: E501
+    """Where to put the extracted cursor in
+    the next request (QUERY, BODY, HEADER)."""
+
+    cursor_name: t.Optional[str] = None
+    """
+    Parameter name or path in the next request (e.g., 'cursor', 'start_after').
+    Supports dot-notation paths for nested dicts
+    when cursor_disposition='body' (e.g., 'variables.cursor').
+    """
+
+    # --- Termination Controls ---
+    stop_value: t.Optional[t.Any] = None
+    """Optional explicit value signalling end of pagination (e.g., 'END')."""
+
+    throttle: t.Optional[t.Union[int, float]] = None
+    """Optional pause duration in seconds between page requests."""
+
+
 class RestResponse(BaseModel):
     """
     Response configuration. Response can be paged,
     polled URL or in body.
     """
 
-    handler: t.Union[BasicHandler, Paginator, URLPoller, StatePoller, None] = (
-        PydanticField(None, discriminator="kind")
-    )  # noqa:E501
+    handler: t.Union[
+        BasicHandler, Paginator, URLPoller, StatePoller, CursorPaginator, None
+    ] = PydanticField(None, discriminator="kind")  # noqa:E501
 
     content_type: DataType
     """
