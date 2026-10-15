@@ -957,7 +957,24 @@
 </ul>
 <pre><code class="language-bash">export DUCKDB_LOCK_CONFIG=1
 </code></pre>
-<p>In Pyodide environment these settings are not available.</p>
+<ul>
+<li>Excplicitly set DuckDB memory limit</li>
+</ul>
+<p>If unset then system allocates 75%.</p>
+<p>Fractional RAM Ratio (0 &lt; value &lt; 1)
+Calculates a dynamic memory limit relative to physical host RAM.</p>
+<pre><code class="language-bash">export DUCKDB_MEMORY_LIMIT=0.75  # Allocates 75% of total system RAM
+</code></pre>
+<p>Explicit Unit Strings
+Pass pre-formatted size strings directly to DuckDB.</p>
+<pre><code class="language-bash">export DUCKDB_MEMORY_LIMIT=4GB   # Sets hard limit to 4 Gigabytes
+export DUCKDB_MEMORY_LIMIT=500MB # Sets hard limit to 500 Megabytes
+</code></pre>
+<p>Disable Limit (&lt;= 0)
+Removes memory bounds, allowing DuckDB to manage allocation dynamically.</p>
+<pre><code class="language-bash">export DUCKDB_MEMORY_LIMIT=-1   # Disables memory caps
+</code></pre>
+<p>In Pyodide environment these settings have no effect.</p>
 <h3 id="1-imports">1. Imports<a class="headerlink" href="#1-imports" title="Permanent link">&para;</a></h3>
 <p>To begin using AnkaFlow, you'll first need to import the necessary libraries:</p>
 <pre><code class="language-python">from ankaflow import Flow, FlowContext, ConnectionConfiguration
