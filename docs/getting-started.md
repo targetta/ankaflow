@@ -46,7 +46,30 @@ export DUCKDB_DISABLE_LOCALFS=1
 export DUCKDB_LOCK_CONFIG=1
 ```
 
-In Pyodide environment these settings are not available.
+- Excplicitly set DuckDB memory limit
+
+If unset then system allocates 75%.
+
+Fractional RAM Ratio (0 < value < 1)
+Calculates a dynamic memory limit relative to physical host RAM.
+```bash
+export DUCKDB_MEMORY_LIMIT=0.75  # Allocates 75% of total system RAM
+```
+
+Explicit Unit Strings
+Pass pre-formatted size strings directly to DuckDB.
+```bash
+export DUCKDB_MEMORY_LIMIT=4GB   # Sets hard limit to 4 Gigabytes
+export DUCKDB_MEMORY_LIMIT=500MB # Sets hard limit to 500 Megabytes
+```
+
+Disable Limit (<= 0)
+Removes memory bounds, allowing DuckDB to manage allocation dynamically.
+```bash
+export DUCKDB_MEMORY_LIMIT=-1   # Disables memory caps
+```
+
+In Pyodide environment these settings have no effect.
 
 
 ### 1. Imports

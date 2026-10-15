@@ -5,6 +5,7 @@ from io import FileIO, StringIO
 import typing as t
 import logging
 import random
+import psutil
 
 from ..models.configs import ConnectionConfiguration
 from .macros import iter_macros
@@ -77,6 +78,36 @@ class DDB:
         else:
             self.c.execute("SET autoinstall_known_extensions=true;")
             self.c.execute("SET autoload_known_extensions=true;")
+
+        # Fallback to 0.8 (80%) if not set
+        mem_lim = os.getenv("DUCKDB_MEMORY_LIMIT", "0.75").strip()
+
+        try:
+            floating_limit = float(mem_lim)
+
+            if 0 < floating_limit < 1:
+                # 0.8 -> calculate 80% of total system RAM
+                total_bytes = psutil.virtual_memory().total
+                limit_bytes = int(total_bytes * floating_limit)
+                self.c.execute("SET memory_limit = ?;", [f"{limit_bytes}B"])
+
+            elif floating_limit <= 0:
+                # -1 or 0 -> disable memory limit
+                self.c.execute("SET memory_limit = '-1';")
+
+            else:
+                # Bare numbers >= 1 (e.g. 1.8) -> raise error as invalid ratio
+                raise ValueError(
+                    f"Numeric DUCKDB_MEMORY_LIMIT must be in range (0, 1) or <= 0 (got {mem_lim}). "  # noqa: E501
+                    "Use explicit unit strings like '4GB' instead."
+                )
+
+        except ValueError as e:
+            if "Numeric DUCKDB_MEMORY_LIMIT" in str(e):
+                raise  # Re-raise our custom numeric range error
+
+            # Hand off strings directly to DuckDB (e.g., '4GB', '80%')
+            self.c.execute("SET memory_limit = ?;", [mem_lim])
 
         # Remove the default s3 access
         # They will facilitate overriding secret scopes
